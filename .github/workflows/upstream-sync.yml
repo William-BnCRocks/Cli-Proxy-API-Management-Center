@@ -1,0 +1,178 @@
+name: Upstream sync
+
+# Weekly (or on demand): merge router-for-me/Cli-Proxy-API-Management-Center into this
+# fork, verify, and publish a release that the CLIProxyAPI panel updater will pick up
+# (it reads this repo's "latest" release and downloads the asset named management.html).
+# A clean merge that builds and passes tests is pushed and released; anything else opens an
+# issue and leaves main untouched. Uses only the built-in GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Publish a release even when upstream has nothing new'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: router-for-me/Cli-Proxy-API-Management-Center
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        id: upstream
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          default_branch="$(gh repo view "${UPSTREAM_REPO}" --json defaultBranchRef -q .defaultBranchRef.name)"
+          git fetch upstream "${default_branch}" --no-tags
+          git fetch upstream 'refs/tags/*:refs/tags/*' --force --quiet || true
+          behind="$(git rev-list --count HEAD..upstream/${default_branch})"
+          echo "branch=${default_branch}" >> "$GITHUB_OUTPUT"
+          echo "behind=${behind}" >> "$GITHUB_OUTPUT"
+          echo "Upstream ${default_branch} is ${behind} commit(s) ahead."
+
+      - name: Merge upstream
+        id: merge
+        if: steps.upstream.outputs.behind != '0'
+        run: |
+          set -euo pipefail
+          if git merge --no-edit -m "chore: merge upstream ${{ steps.upstream.outputs.branch }}" "upstream/${{ steps.upstream.outputs.branch }}"; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt" || true
+            git merge --abort
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open an issue on merge conflicts
+        if: steps.merge.outputs.clean == 'false'
+        run: |
+          set -euo pipefail
+          title="Upstream sync: merge conflicts"
+          if [ -n "$(gh issue list --state open --search "\"${title}\" in:title" --json number -q '.[0].number')" ]; then
+            echo "An open conflict issue already exists."; exit 0
+          fi
+          {
+            echo "Merging \`${UPSTREAM_REPO}\` into this fork conflicts. Nothing was pushed or released."
+            echo
+            echo "Conflicting files:"
+            sed 's/^/- /' "$RUNNER_TEMP/conflicts.txt"
+            echo
+            echo "Resolve locally: \`git fetch upstream && git merge upstream/${{ steps.upstream.outputs.branch }}\`, fix, push, then re-run the *Upstream sync* workflow."
+            echo
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } > "$RUNNER_TEMP/body.md"
+          gh issue create --title "${title}" --body-file "$RUNNER_TEMP/body.md"
+
+      - name: Decide whether to build
+        id: gate
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.merge.outputs.clean }}" = "false" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.upstream.outputs.behind }}" != "0" ] || [ "${{ inputs.force_release }}" = "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date; nothing to release."
+          fi
+
+      - name: Setup Node.js
+        if: steps.gate.outputs.build == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup Bun
+        if: steps.gate.outputs.build == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+
+      - name: Compute release version
+        id: version
+        if: steps.gate.outputs.build == 'true'
+        run: |
+          set -euo pipefail
+          base="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- '-bnc' | head -n 1)"
+          [ -n "${base}" ] || { echo "no upstream version tag found" >&2; exit 1; }
+          n=1
+          while git rev-parse -q --verify "refs/tags/${base}-bnc.${n}" >/dev/null; do n=$((n + 1)); done
+          echo "tag=${base}-bnc.${n}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify (tests, lint, build)
+        id: verify
+        if: steps.gate.outputs.build == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          bun run verify
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+
+      - name: Open an issue when verification fails
+        if: steps.gate.outputs.build == 'true' && steps.verify.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          title="Upstream sync: build or tests failed after merge"
+          if [ -z "$(gh issue list --state open --search "\"${title}\" in:title" --json number -q '.[0].number')" ]; then
+            gh issue create --title "${title}" --body "The upstream merge was clean but \`bun run verify\` failed, so nothing was pushed or released. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          fi
+          exit 1
+
+      - name: Push merged branch
+        if: steps.gate.outputs.build == 'true' && steps.verify.outcome == 'success'
+        id: push
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # Nothing to push for a forced re-release without a merge.
+          git push origin "HEAD:${{ github.event.repository.default_branch }}"
+
+      - name: Open an issue when the push is refused
+        if: steps.push.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          title="Upstream sync: push refused"
+          if [ -z "$(gh issue list --state open --search "\"${title}\" in:title" --json number -q '.[0].number')" ]; then
+            gh issue create --title "${title}" --body "The merge built and tested fine but could not be pushed (GITHUB_TOKEN cannot update workflow files; upstream probably changed .github/workflows). Merge upstream locally and push. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          fi
+          exit 1
+
+      - name: Publish release
+        if: steps.push.outcome == 'success'
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          mkdir -p "$RUNNER_TEMP/asset"
+          cp dist/index.html "$RUNNER_TEMP/asset/management.html"
+          {
+            echo "Upstream sync: $(git log -1 --format=%h "upstream/${{ steps.upstream.outputs.branch }}") merged into the bnc fork."
+            echo
+            git log --pretty='- %h %s' -n 15
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "${tag}" "$RUNNER_TEMP/asset/management.html" \
+            --target "$(git rev-parse HEAD)" --title "${tag}" --notes-file "$RUNNER_TEMP/notes.md" --latest
