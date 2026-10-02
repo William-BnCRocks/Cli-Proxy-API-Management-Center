@@ -62,8 +62,8 @@ export type PluginRefreshOutcome =
 export async function requestPluginRefresh(name: string): Promise<PluginRefreshOutcome> {
   const result = await refreshPluginCard(name);
   if (result.ok) {
-    window.setTimeout(() => void syncPluginCards(), 4000);
-    window.setTimeout(() => void syncPluginCards(), 12000);
+    window.setTimeout(() => void syncPluginCards(), 2000);
+    window.setTimeout(() => void syncPluginCards(), 8000);
     return { kind: 'requested' };
   }
   if (!result.throttled) return { kind: 'failed' };
