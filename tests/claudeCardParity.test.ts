@@ -2,7 +2,9 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { TFunction } from 'i18next';
-import i18n from '@/i18n';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import en from '@/i18n/locales/en.json';
 import {
   buildClaudeQuotaBudgets,
   buildClaudeQuotaWindows,
@@ -187,9 +189,16 @@ describe('Claude account facts', () => {
 });
 
 describe('Claude card body', () => {
+  // A private i18n instance: importing '@/i18n' would initialise the global one and change what
+  // every later test file sees from useTranslation().
+  const i18n = createInstance();
   beforeAll(async () => {
-    await i18n.changeLanguage('en');
+    await i18n.init({ resources: { en: { translation: en } }, lng: 'en', fallbackLng: 'en' });
   });
+  const render = (props: Parameters<typeof ClaudeQuotaBody>[0]) =>
+    renderToStaticMarkup(
+      createElement(I18nextProvider, { i18n }, createElement(ClaudeQuotaBody, props))
+    );
 
   const grants = parseAnthropicResetGrantStatus({
     eligible: true,
@@ -223,7 +232,7 @@ describe('Claude card body', () => {
   };
 
   test('shows plan, renewal, credit, banked-reset expiry, every window and the budget', () => {
-    const markup = renderToStaticMarkup(createElement(ClaudeQuotaBody, { quota, classes }));
+    const markup = render({ quota, classes });
     expect(markup).toContain('Max 20x');
     expect(markup).toContain(classes.elitePlanValue);
     expect(markup).toContain('Renews (est.)');
@@ -231,12 +240,7 @@ describe('Claude card body', () => {
     expect(markup).toContain('>Off<');
     expect(markup).toContain('Banked resets expire');
     expect(markup).toContain('1 of 1 left');
-    for (const label of [
-      '5-hour limit',
-      '7-day limit',
-      '7-day Fable 5',
-      'Fable 5 credit',
-    ]) {
+    for (const label of ['5-hour limit', '7-day limit', '7-day Fable 5', 'Fable 5 credit']) {
       expect(markup).toContain(label);
     }
     expect(markup).toContain('$179.89 left of $250.00');
@@ -244,7 +248,7 @@ describe('Claude card body', () => {
   });
 
   test('labels every percentage as remaining', () => {
-    const markup = renderToStaticMarkup(createElement(ClaudeQuotaBody, { quota, classes }));
+    const markup = render({ quota, classes });
     // used 19 / 58 / 12 / 28.05 -> left 81 / 42 / 88 / 72
     for (const left of ['81% left', '42% left', '88% left', '72% left']) {
       expect(markup).toContain(left);
@@ -253,7 +257,7 @@ describe('Claude card body', () => {
   });
 
   test('adds pool badges and the pace marker only when claude-pool data is present', () => {
-    const without = renderToStaticMarkup(createElement(ClaudeQuotaBody, { quota, classes }));
+    const without = render({ quota, classes });
     expect(without).not.toContain('Next new session');
     expect(without).not.toContain('Pool rank');
     expect(without).not.toContain('over plan');
@@ -268,9 +272,7 @@ describe('Claude card body', () => {
       plannedUsedPercent: 8,
       actualUsedPercent: 58,
     };
-    const withPool = renderToStaticMarkup(
-      createElement(ClaudeQuotaBody, { quota, classes, claudePool })
-    );
+    const withPool = render({ quota, classes, claudePool });
     expect(withPool).toContain('#2 / 4');
     expect(withPool).toContain('Next new session');
     expect(withPool).toContain('50 pts over plan');
