@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { CODEX_CONFIG } from '@/features/quota/providers/codex/data';
 import { apiClient } from '@/services/api/client';
 import {
   fetchPluginCards,
@@ -309,6 +310,8 @@ test('flags a Codex plan whose limit is reached', () => {
     ],
   });
   expect(codexCardToData(byKind!.cards[0]).limitReached).toBe(true);
+  // and it survives into the card state the body renders
+  expect(CODEX_CONFIG.buildSuccessState(codexCardToData(byKind!.cards[0])).limitReached).toBe(true);
 });
 
 describe('source-specific intervals', () => {
