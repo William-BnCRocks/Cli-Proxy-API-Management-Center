@@ -316,7 +316,8 @@ export function codexCardToData(card: PluginCard): CodexQuotaData {
     rateLimitResetCredits: resetCredits,
     rateLimitResetCreditsError: '',
     windows,
-    limitReached: n.limit_reached === true,
+    // The plugin's card-level `kind` is authoritative: it is limit_reached while the plan is refused.
+    limitReached: n.limit_reached === true || card.kind === 'limit_reached',
   };
 }
 
