@@ -295,6 +295,20 @@ test('flags a Codex plan whose limit is reached', () => {
   const data = codexCardToData(parsed!.cards[0]);
   expect(data.limitReached).toBe(true);
   expect(data.windows[0].usedPercent).toBe(100);
+
+  // card-level kind alone is enough
+  const byKind = parsePluginCards({
+    cards: [
+      {
+        provider: 'codex',
+        name: 'codex-c.json',
+        data_at: T0,
+        kind: 'limit_reached',
+        normalized: { plan: 'pro', limit_reached: false, windows: [] },
+      },
+    ],
+  });
+  expect(codexCardToData(byKind!.cards[0]).limitReached).toBe(true);
 });
 
 describe('source-specific intervals', () => {
