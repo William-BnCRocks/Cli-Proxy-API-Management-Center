@@ -16,6 +16,8 @@ import { getStatusFromError } from '@/utils/quota';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { enrichQuotaInBackground } from '../quotaEnrichment';
 import { currentLiveKey, useQuotaLiveStore } from '../liveStore';
+import { isPluginBackedType } from '../pluginCards';
+import { requestPluginRefresh } from '../pluginSource';
 import { getQuotaMap, getQuotaSetter, type QuotaAdapter, type QuotaCardState } from '../providers';
 
 const getQuotaState = (adapter: QuotaAdapter, file: AuthFileItem): QuotaCardState | undefined =>
@@ -33,6 +35,37 @@ export function useQuotaActions(disableControls: boolean) {
       const cacheKey = getQuotaCacheKey(file);
       if (resettingQuotaName === cacheKey) return;
       if (getQuotaState(adapter, file)?.status === 'loading') return;
+
+      // Claude/Codex: the claude-pool plugin owns the upstream polling. Ask it to re-poll this
+      // credential (it throttles) instead of calling Anthropic/ChatGPT from the browser.
+      if (isPluginBackedType(adapter.type)) {
+        const mode = useQuotaLiveStore.getState().source;
+        if (mode !== 'direct') {
+          if (mode === 'unknown') return;
+          const outcome = await requestPluginRefresh(file.name);
+          if (outcome.kind === 'throttled') {
+            showNotification(
+              t('quota_management.live_refresh_throttled', {
+                name: file.name,
+                wait: outcome.waitS,
+              }),
+              'warning'
+            );
+          } else if (outcome.kind === 'failed') {
+            showNotification(
+              t('auth_files.quota_refresh_failed', { name: file.name, message: '' }),
+              'error'
+            );
+          } else {
+            showNotification(
+              t('quota_management.live_refresh_requested', { name: file.name }),
+              'success'
+            );
+          }
+          return;
+        }
+      }
+
       const cacheGeneration = captureQuotaCacheGeneration(file.name);
       const setQuota = getQuotaSetter(adapter);
 

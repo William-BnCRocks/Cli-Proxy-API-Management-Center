@@ -125,6 +125,11 @@ export function CodexQuotaBody({ quota, classes }: QuotaBodyProps<CodexQuotaStat
           )}
         </div>
       )}
+      {quota.limitReached && (
+        <div className={classes.codexResetCreditsError} role="status">
+          {t('codex_quota.limit_reached')}
+        </div>
+      )}
       {rateLimitResetCredits.length > 0 ? (
         <div className={classes.codexResetCredits}>
           <div className={classes.codexResetCreditsTitle}>

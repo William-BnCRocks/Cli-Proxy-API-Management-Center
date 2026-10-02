@@ -567,7 +567,8 @@
     "plan_free": "Free",
     "plan_pro": "Pro 20x",
     "plan_prolite": "Pro 5x",
-    "plan_business_premium": "Business Premium"
+    "plan_business_premium": "Business Premium",
+    "limit_reached": "Usage limit reached: requests are refused until the window resets"
   },
   "devin_quota": {
     "daily": "Daily remaining",
@@ -1623,7 +1624,12 @@
     "live_span_hours": "{{n}}h",
     "live_rate_limited": "Rate limited · retry in {{wait}}",
     "live_failed": "Refresh failed · retry in {{wait}}",
-    "live_paused_hint": "Auto-refresh is paused; use Refresh to update this card"
+    "live_paused_hint": "Auto-refresh is paused; use Refresh to update this card",
+    "live_polled": "polled {{ago}} ago",
+    "live_from_traffic": "live from traffic {{ago}} ago",
+    "live_plugin_hint": "Served from the claude-pool cache; the browser does not call Anthropic or ChatGPT",
+    "live_refresh_requested": "Asked claude-pool to re-poll {{name}}",
+    "live_refresh_throttled": "Refreshed recently, try in {{wait}}s"
   },
   "plugin_management": {
     "title": "Plugin Management",

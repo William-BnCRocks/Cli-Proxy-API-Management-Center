@@ -570,7 +570,8 @@
     "plan_free": "Free",
     "plan_pro": "Pro 20x",
     "plan_prolite": "Pro 5x",
-    "plan_business_premium": "Business Premium"
+    "plan_business_premium": "Business Premium",
+    "limit_reached": "Лимит исчерпан: запросы отклоняются до сброса окна"
   },
   "devin_quota": {
     "daily": "Остаток на день",
@@ -1626,7 +1627,12 @@
     "live_span_hours": "{{n}} ч",
     "live_rate_limited": "Лимит запросов · повтор через {{wait}}",
     "live_failed": "Не удалось обновить · повтор через {{wait}}",
-    "live_paused_hint": "Автообновление на паузе; нажмите «Обновить», чтобы обновить карточку"
+    "live_paused_hint": "Автообновление на паузе; нажмите «Обновить», чтобы обновить карточку",
+    "live_polled": "опрошено {{ago}} назад",
+    "live_from_traffic": "из живого трафика {{ago}} назад",
+    "live_plugin_hint": "Данные из кэша claude-pool; браузер не обращается к Anthropic или ChatGPT",
+    "live_refresh_requested": "claude-pool попросили обновить {{name}}",
+    "live_refresh_throttled": "Недавно обновлено, повторите через {{wait}} с"
   },
   "plugin_management": {
     "title": "Управление плагинами",

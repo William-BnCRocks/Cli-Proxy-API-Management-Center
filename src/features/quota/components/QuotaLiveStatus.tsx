@@ -54,6 +54,20 @@ export function QuotaLiveStatus({ liveKey, className, errorClassName }: QuotaLiv
   }
 
   if (!schedule || schedule.updatedAt === undefined) return null;
+
+  // Plugin mode: say how old the cached reading is and whether it came from a poll or from traffic.
+  if (schedule.data) {
+    const dataAge = Math.max(0, now - schedule.data.at);
+    const key =
+      schedule.data.source === 'passive'
+        ? 'quota_management.live_from_traffic'
+        : 'quota_management.live_polled';
+    return (
+      <span className={className} title={t('quota_management.live_plugin_hint')}>
+        {t(key, { ago: span(agoParts(dataAge)) })}
+      </span>
+    );
+  }
   const age = Math.max(0, now - schedule.updatedAt);
   return (
     <span

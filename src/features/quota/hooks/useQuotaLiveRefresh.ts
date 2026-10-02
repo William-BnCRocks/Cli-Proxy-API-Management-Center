@@ -17,6 +17,7 @@ import { captureQuotaCacheGeneration, commitIfQuotaCacheCurrent } from '@/stores
 import { getStatusFromError } from '@/utils/quota';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { isLiveDue, pickDueKeys, LIVE_CONCURRENCY } from '../liveRefresh';
+import { isPluginBackedType } from '../pluginCards';
 import { currentLiveKey, useQuotaLiveStore } from '../liveStore';
 import type { QuotaFileEntry } from '../logic';
 import { QUOTA_ADAPTERS, getQuotaMap, getQuotaSetter } from '../providers';
@@ -79,11 +80,14 @@ export function useQuotaLiveRefresh(entries: QuotaFileEntry[], enabled: boolean)
     const tick = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       if (inFlight.size >= LIVE_CONCURRENCY) return;
-      const { intervalMs, schedules } = useQuotaLiveStore.getState();
+      const { intervalMs, schedules, source } = useQuotaLiveStore.getState();
       const now = Date.now();
       const byKey = new Map<string, QuotaFileEntry>();
       const candidates = entries
+        // Claude/Codex numbers come from the claude-pool cache when it exists, and are not
+        // fetched directly until the probe has said which source applies.
         .filter((entry) => !entry.file.disabled)
+        .filter((entry) => source === 'direct' || !isPluginBackedType(entry.type))
         .map((entry) => {
           const key = currentLiveKey(entry.type, getQuotaCacheKey(entry.file));
           byKey.set(key, entry);

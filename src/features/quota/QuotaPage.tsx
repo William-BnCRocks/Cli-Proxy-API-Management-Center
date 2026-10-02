@@ -52,8 +52,9 @@ import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
 import { useQuotaLiveRefresh } from './hooks/useQuotaLiveRefresh';
 import { useClaudePoolStatus } from './hooks/useClaudePoolStatus';
+import { usePluginQuotaSource } from './hooks/usePluginQuotaSource';
 import { resolveClaudePoolInfo } from './claudePool';
-import { LIVE_INTERVALS_MS } from './liveRefresh';
+import { intervalsFor } from './liveRefresh';
 import { useQuotaLiveStore } from './liveStore';
 import { readQuotaUiState, writeQuotaUiState } from './uiState';
 import styles from './QuotaPage.module.scss';
@@ -206,13 +207,14 @@ export function QuotaPage() {
 
   const liveIntervalMs = useQuotaLiveStore((state) => state.intervalMs);
   const setLiveIntervalMs = useQuotaLiveStore((state) => state.setIntervalMs);
+  const liveSource = useQuotaLiveStore((state) => state.source);
   const liveOptions = useMemo(
     () =>
-      LIVE_INTERVALS_MS.map((ms) => ({
+      intervalsFor(liveSource === 'plugin' ? 'plugin' : 'direct').map((ms) => ({
         value: String(ms),
         label: t(`quota_management.live_interval_${ms}`),
       })),
-    [t]
+    [t, liveSource]
   );
 
   const sortOptions = useMemo(
@@ -307,6 +309,7 @@ export function QuotaPage() {
   const canUseActions = !disableControls && !loading && filesGeneration === sessionGeneration;
 
   // Load every credential on the page without a click, then keep them fresh.
+  usePluginQuotaSource(canUseActions && !error);
   useQuotaLiveRefresh(pageItems, canUseActions && !error);
   const claudePoolStatus = useClaudePoolStatus(
     canUseActions && pageItems.some((entry) => entry.type === 'claude'),
