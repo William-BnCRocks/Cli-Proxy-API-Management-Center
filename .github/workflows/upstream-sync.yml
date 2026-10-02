@@ -27,6 +27,8 @@ concurrency:
 env:
   UPSTREAM_REPO: router-for-me/Cli-Proxy-API-Management-Center
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # The extra `upstream` git remote would otherwise make gh target the upstream repo.
+  GH_REPO: ${{ github.repository }}
 
 jobs:
   sync:
