@@ -120,13 +120,8 @@ export function QuotaCard(props: QuotaCardProps) {
 
       <div className={styles.body}>
         {entry.type === 'claude' && status === 'success' && (
+          // The "Resets remaining" count lives in the Claude body's plan row, like Codex's.
           <>
-            <div className={quotaClasses.codexPlan}>
-              <span className={quotaClasses.codexPlanItem}>
-                <span className={quotaClasses.codexPlanLabel}>{t('claude_reset.remaining')}</span>
-                <span className={quotaClasses.codexPlanValue}>{claudeReset.count ?? '--'}</span>
-              </span>
-            </div>
             {claudeReset.message && (
               <div role="status" className={quotaClasses.codexResetCreditsError}>
                 {t(`claude_reset.${claudeReset.message}`)}

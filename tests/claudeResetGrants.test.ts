@@ -343,8 +343,11 @@ test('card selection prefers usable recommendation and has deterministic fallbac
 
 test('Claude card uses Codex count and action styles and shared confirmation, not a grant dialog', async () => {
   const card = await Bun.file('src/features/quota/components/QuotaCard.tsx').text();
+  const body = await Bun.file('src/features/quota/providers/claude/ClaudeQuotaBody.tsx').text();
   const hook = await Bun.file('src/features/quota/providers/claude/ClaudeResetGrants.tsx').text();
-  expect(card).toContain('quotaClasses.codexPlanValue}>{claudeReset.count');
+  // The count sits in the body's plan row (same classes as Codex's "Manual resets").
+  expect(body).toContain("t('claude_reset.remaining')");
+  expect(body).toContain('classes.codexPlanValue}>{resetsLeft}');
   expect(card).toContain('disabled={claudeReset.blocked}');
   expect(card).toContain('onClick={claudeReset.confirm}');
   expect(hook).toContain('showConfirmation({');

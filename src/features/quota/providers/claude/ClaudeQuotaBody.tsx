@@ -46,6 +46,9 @@ export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<C
     [quota.extraUsage, quota.spend]
   );
   const grants = (quota.resetGrants?.grants ?? []).filter((grant) => grant.resetsLeft > 0);
+  const resetsLeft = quota.resetGrants
+    ? quota.resetGrants.grants.reduce((sum, grant) => sum + grant.resetsLeft, 0)
+    : null;
 
   const renewal = subscription?.renewsAtMs
     ? buildResetDisplay(null, subscription.renewsAtMs, now, locale)
@@ -127,7 +130,13 @@ export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<C
   };
 
   const hasChips =
-    planType || renewal || trial || subscriptionStatus || creditValue || claudePool?.rank;
+    planType ||
+    renewal ||
+    trial ||
+    subscriptionStatus ||
+    creditValue ||
+    resetsLeft !== null ||
+    claudePool?.rank;
 
   return (
     <>
@@ -172,6 +181,12 @@ export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<C
               {credit?.limitReached && (
                 <span className={styles.warnTag}>{t('claude_quota.credit_limit_reached')}</span>
               )}
+            </span>
+          )}
+          {resetsLeft !== null && (
+            <span className={classes.codexPlanItem}>
+              <span className={classes.codexPlanLabel}>{t('claude_reset.remaining')}</span>
+              <span className={classes.codexPlanValue}>{resetsLeft}</span>
             </span>
           )}
           {claudePool?.rank != null && (

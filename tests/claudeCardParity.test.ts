@@ -235,7 +235,7 @@ describe('Claude card body', () => {
       '5-hour limit',
       '7-day limit',
       '7-day Fable 5',
-      'Fable 5 credit (monthly)',
+      'Fable 5 credit',
     ]) {
       expect(markup).toContain(label);
     }
@@ -271,7 +271,7 @@ describe('Claude card body', () => {
     const withPool = renderToStaticMarkup(
       createElement(ClaudeQuotaBody, { quota, classes, claudePool })
     );
-    expect(withPool).toContain('#2 of 4');
+    expect(withPool).toContain('#2 / 4');
     expect(withPool).toContain('Next new session');
     expect(withPool).toContain('50 pts over plan');
     expect(withPool).toContain('Plan: 8% used by now');

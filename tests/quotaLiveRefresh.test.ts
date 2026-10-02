@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   LIVE_CONCURRENCY,
   MAX_BACKOFF_MS,
+  MAX_RETRY_AFTER_MS,
   MIN_RETRY_MS,
   agoParts,
   backoffDelayMs,
@@ -46,7 +47,8 @@ describe('live refresh schedule', () => {
     expect(backoffDelayMs(60_000, 1, 429)).toBe(120_000);
     expect(backoffDelayMs(60_000, 2, 429)).toBe(240_000);
     expect(backoffDelayMs(60_000, 1, 429, 600_000)).toBe(600_000);
-    expect(backoffDelayMs(60_000, 1, 429, 99 * 60_000)).toBe(MAX_BACKOFF_MS);
+    expect(backoffDelayMs(60_000, 1, 429, 42 * 60_000)).toBe(42 * 60_000);
+    expect(backoffDelayMs(60_000, 1, 429, 99 * 60_000)).toBe(MAX_RETRY_AFTER_MS);
   });
 
   test('a failure keeps the last success time and counts consecutive failures', () => {

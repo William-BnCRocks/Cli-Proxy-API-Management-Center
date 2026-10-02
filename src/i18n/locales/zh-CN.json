@@ -498,7 +498,7 @@
     "plan_max20": "Max 20x",
     "plan_team": "团队版",
     "window_other": "其他限额（{{name}}）",
-    "fable_budget": "Fable 5 额度（每月）",
+    "fable_budget": "Fable 5 额度",
     "status_label": "状态",
     "renews_label": "续费（预估）",
     "renews_hint": "根据订阅开始日期估算；Anthropic 不向 OAuth 令牌提供账单日期。",

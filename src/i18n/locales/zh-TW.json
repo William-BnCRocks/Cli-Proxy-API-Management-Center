@@ -498,7 +498,7 @@
     "plan_max20": "Max 20x",
     "plan_team": "團隊版",
     "window_other": "其他限額（{{name}}）",
-    "fable_budget": "Fable 5 額度（每月）",
+    "fable_budget": "Fable 5 額度",
     "status_label": "狀態",
     "renews_label": "續費（預估）",
     "renews_hint": "依訂閱開始日期估算；Anthropic 不向 OAuth 權杖提供帳單日期。",

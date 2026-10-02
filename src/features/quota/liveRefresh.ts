@@ -13,6 +13,8 @@ export const DEFAULT_LIVE_INTERVAL_MS = 60_000;
 /** Upstream calls in flight at once, across the whole page. */
 export const LIVE_CONCURRENCY = 3;
 export const MAX_BACKOFF_MS = 15 * 60_000;
+/** A server-provided Retry-After is honoured further than our own guess, but not forever. */
+export const MAX_RETRY_AFTER_MS = 60 * 60_000;
 /** Never retry faster than this, whatever the chosen interval. */
 export const MIN_RETRY_MS = 30_000;
 /** Spread of the next due time so credentials do not all fire in the same second. */
@@ -34,7 +36,7 @@ export const isLiveInterval = (value: unknown): value is (typeof LIVE_INTERVALS_
 /**
  * Delay before retrying after the `failures`-th consecutive failure (>= 1).
  * - 429: at least double the base on the first hit, doubling per repeat, and
- *   never sooner than the server's Retry-After.
+ *   never sooner than the server's Retry-After (up to an hour).
  * - other errors: retry at the base cadence first, then double.
  */
 export function backoffDelayMs(
@@ -47,7 +49,7 @@ export function backoffDelayMs(
   const steps = Math.max(0, failures - (status === 429 ? 0 : 1));
   const exponential = Math.min(MAX_BACKOFF_MS, base * 2 ** Math.min(steps, 10));
   const hinted = typeof retryAfterMs === 'number' && retryAfterMs > 0 ? retryAfterMs : 0;
-  return Math.min(MAX_BACKOFF_MS, Math.max(exponential, hinted));
+  return Math.max(exponential, Math.min(MAX_RETRY_AFTER_MS, hinted));
 }
 
 /** `random` is injectable for tests; returns a value in [0, ratio * delay). */
