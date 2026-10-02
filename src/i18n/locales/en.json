@@ -522,8 +522,8 @@
     "pool_ineligible": "Not in rotation",
     "pace_tooltip": "Plan: {{planned}}% used by now · actual: {{actual}}%",
     "pace_on_plan": "On plan",
-    "pace_over": "{{points}} pts over plan ({{planned}}% planned by now)",
-    "pace_under": "{{points}} pts under plan ({{planned}}% planned by now)"
+    "pace_over": "{{points}} pp over plan ({{planned}}% planned by now)",
+    "pace_under": "{{points}} pp under plan ({{planned}}% planned by now)"
   },
   "codex_quota": {
     "title": "Codex Quota",

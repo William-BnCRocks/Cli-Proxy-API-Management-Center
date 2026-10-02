@@ -275,7 +275,7 @@ describe('Claude card body', () => {
     const withPool = render({ quota, classes, claudePool });
     expect(withPool).toContain('#2 / 4');
     expect(withPool).toContain('Next new session');
-    expect(withPool).toContain('50 pts over plan');
+    expect(withPool).toContain('50 pp over plan');
     expect(withPool).toContain('Plan: 8% used by now');
   });
 
