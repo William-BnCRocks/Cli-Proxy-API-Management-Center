@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
 import {
   readModelOptions,
   buildModelOptions,
@@ -172,15 +174,24 @@ describe('provider model options', () => {
     ).toBeNull();
   });
 
+  // `cimode` echoes translation keys whatever language other test files left on the global
+  // i18n instance (several of them initialise it), so these assertions stay order-independent.
+  const keyEcho = createInstance();
+  void keyEcho.init({ lng: 'cimode', resources: {} });
+
   const render = (brand: ProviderBrand, disabled = false, enabled = true) =>
     renderToStaticMarkup(
-      createElement(ModelAdvancedFields, {
-        entry: { name: 'model', thinkingEnabled: enabled },
-        providerBrand: brand,
-        disabled,
-        supportsThinking: true,
-        onUpdate: () => {},
-      })
+      createElement(
+        I18nextProvider,
+        { i18n: keyEcho },
+        createElement(ModelAdvancedFields, {
+          entry: { name: 'model', thinkingEnabled: enabled },
+          providerBrand: brand,
+          disabled,
+          supportsThinking: true,
+          onUpdate: () => {},
+        })
+      )
     );
 
   test('gates fields by provider capability', () => {
