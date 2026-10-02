@@ -7,9 +7,25 @@
  * exercises every rule directly.
  */
 
-/** Auto-refresh choices in ms; 0 = paused (initial load still happens once). */
-export const LIVE_INTERVALS_MS = [0, 30_000, 60_000, 120_000, 300_000] as const;
-export const DEFAULT_LIVE_INTERVAL_MS = 60_000;
+/**
+ * Where a card's numbers come from.
+ * - plugin: the claude-pool plugin's cache (no upstream call from the browser), so a short interval is free.
+ * - direct: the browser asks Anthropic / ChatGPT / ... through api-call, so the default is gentler.
+ */
+export type QuotaSourceMode = 'plugin' | 'direct';
+
+/** Auto-refresh choices in ms per source; 0 = paused (initial load still happens once). */
+export const PLUGIN_INTERVALS_MS = [0, 30_000, 60_000, 120_000, 300_000] as const;
+export const DIRECT_INTERVALS_MS = [0, 120_000, 300_000] as const;
+export const LIVE_INTERVALS_MS = PLUGIN_INTERVALS_MS;
+export const DEFAULT_PLUGIN_INTERVAL_MS = 60_000;
+export const DEFAULT_DIRECT_INTERVAL_MS = 120_000;
+export const DEFAULT_LIVE_INTERVAL_MS = DEFAULT_DIRECT_INTERVAL_MS;
+
+export const intervalsFor = (mode: QuotaSourceMode): readonly number[] =>
+  mode === 'plugin' ? PLUGIN_INTERVALS_MS : DIRECT_INTERVALS_MS;
+export const defaultIntervalFor = (mode: QuotaSourceMode): number =>
+  mode === 'plugin' ? DEFAULT_PLUGIN_INTERVAL_MS : DEFAULT_DIRECT_INTERVAL_MS;
 /** Upstream calls in flight at once, across the whole page. */
 export const LIVE_CONCURRENCY = 3;
 export const MAX_BACKOFF_MS = 15 * 60_000;
@@ -28,10 +44,12 @@ export interface LiveSchedule {
   /** Consecutive failures since the last success. */
   failures: number;
   lastError?: { status?: number; message: string; at: number };
+  /** Plugin mode: where the cached numbers came from and when (epoch ms). */
+  data?: { source: string; at: number };
 }
 
-export const isLiveInterval = (value: unknown): value is (typeof LIVE_INTERVALS_MS)[number] =>
-  typeof value === 'number' && (LIVE_INTERVALS_MS as readonly number[]).includes(value);
+export const isLiveInterval = (value: unknown, mode: QuotaSourceMode = 'plugin'): value is number =>
+  typeof value === 'number' && intervalsFor(mode).includes(value);
 
 /**
  * Delay before retrying after the `failures`-th consecutive failure (>= 1).
@@ -59,10 +77,12 @@ const jitter = (delayMs: number, random: () => number) =>
 export function scheduleAfterSuccess(
   now: number,
   intervalMs: number,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  data?: LiveSchedule['data']
 ): LiveSchedule {
   return {
     updatedAt: now,
+    ...(data ? { data } : {}),
     // Paused: park the next fetch far away; the pause check in isDue is what matters.
     nextAt:
       intervalMs > 0 ? now + intervalMs + jitter(intervalMs, random) : Number.MAX_SAFE_INTEGER,
