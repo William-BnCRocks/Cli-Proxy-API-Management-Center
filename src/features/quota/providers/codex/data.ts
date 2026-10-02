@@ -548,6 +548,7 @@ export const CODEX_CONFIG: QuotaProviderData<CodexQuotaState, CodexQuotaData> = 
       data.rateLimitResetCreditsApplicableAvailableCount,
     rateLimitResetCredits: data.rateLimitResetCredits,
     rateLimitResetCreditsError: data.rateLimitResetCreditsError,
+    ...(data.limitReached ? { limitReached: true } : {}),
   }),
   buildErrorState: (message, status) => ({
     status: 'error',
