@@ -4,21 +4,19 @@ import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores';
 import { apiClient } from '@/services/api/client';
-import {
-  readClaudeResetGrants,
-  type AnthropicResetGrantStatus,
-} from '@/services/api/claudeResetGrants';
+import type { AnthropicResetGrantStatus } from '@/services/api/claudeResetGrants';
 import type { AuthFileItem } from '@/types';
 import { normalizeAuthIndex } from '@/utils/quota';
 import { resetGrantOperations, RETRY_WINDOW_MS } from './resetGrantOperations';
 import { selectResetGrant } from './selectResetGrant';
 
-/** Card-owned reads; the session-scoped journal owns spending and ambiguous retries. */
+/** The grant list comes from the card's own quota fetch (usage?cedar_ember=1), so this
+ * hook issues no reads; the session-scoped journal owns spending and ambiguous retries. */
 export function useClaudeResetGrants(
   file: AuthFileItem,
   enabled: boolean,
   disabled: boolean,
-  refreshToken: unknown,
+  status: AnthropicResetGrantStatus | null,
   onRefresh: () => void
 ) {
   const { t } = useTranslation();
@@ -31,35 +29,17 @@ export function useClaudeResetGrants(
   const now = useNow();
   const authIndex = normalizeAuthIndex(file.auth_index ?? file.authIndex);
   const key = JSON.stringify([file.name, authIndex]);
-  const [status, setStatus] = useState<AnthropicResetGrantStatus | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [reload, setReload] = useState(0);
   const lock = useRef(false);
   const generation = useRef(0);
+  const message = enabled && !status ? 'read_error' : '';
+  // A different credential (or unmount) must not complete a claim started for this one.
   useEffect(() => {
-    const version = ++generation.current;
-    setStatus(null);
-    if (!enabled || disabled || !sessionActive || !authIndex) return;
-    let cancelled = false;
-    const current = () =>
-      !cancelled && version === generation.current && session === apiClient.getConnectionRevision();
-    void readClaudeResetGrants(authIndex).then(
-      (result) => {
-        if (current()) {
-          setStatus(result);
-          setMessage('');
-        }
-      },
-      () => {
-        if (current()) setMessage('read_error');
-      }
-    );
+    const owner = generation;
     return () => {
-      cancelled = true;
-      generation.current += 1;
+      owner.current += 1;
     };
-  }, [authIndex, key, enabled, disabled, sessionActive, session, refreshToken, reload]);
+  }, [key]);
 
   const operation = resetGrantOperations.inspect(key);
   const pending = operation && !operation.code ? operation : undefined;
@@ -104,7 +84,6 @@ export function useClaudeResetGrants(
           // A concurrent page-wide refresh can invalidate this read generation.
           // Release the local lock regardless, but never refresh a replacement account.
           setBusy(false);
-          setReload((value) => value + 1);
           if (current()) onRefresh();
         }
       },

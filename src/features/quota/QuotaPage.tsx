@@ -2,7 +2,7 @@
  * 额度查询页：提供商 tabs + 统一卡网格。
  *
  * 保留的行为契约（重设计不改）：
- * - 现有提供商保持点击加载；Devin 首次可见时主动查询一次，不轮询；
+ * - bnc fork: 当前页凭证打开即自动加载，之后按所选间隔自动刷新（见 useQuotaLiveRefresh）；
  * - cacheGeneration 会话隔离 + request-id 去重（见 useQuotaBatchLoader）；
  * - 文件列表变化后按 provider 剪枝额度缓存（已删文件不残留）；
  * - useHeaderRefresh 单槽位：本页唯一注册者，全局刷新 = 重取文件列表。
@@ -50,6 +50,11 @@ import type { QuotaProviderType } from './providers/types';
 import { useDevinQuotaAutoLoad } from './providers/devin/useDevinQuotaAutoLoad';
 import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
+import { useQuotaLiveRefresh } from './hooks/useQuotaLiveRefresh';
+import { useClaudePoolStatus } from './hooks/useClaudePoolStatus';
+import { resolveClaudePoolInfo } from './claudePool';
+import { LIVE_INTERVALS_MS } from './liveRefresh';
+import { useQuotaLiveStore } from './liveStore';
 import { readQuotaUiState, writeQuotaUiState } from './uiState';
 import styles from './QuotaPage.module.scss';
 
@@ -199,6 +204,17 @@ export function QuotaPage() {
     writeQuotaUiState({ sortMode: next as QuotaSortMode });
   }, []);
 
+  const liveIntervalMs = useQuotaLiveStore((state) => state.intervalMs);
+  const setLiveIntervalMs = useQuotaLiveStore((state) => state.setIntervalMs);
+  const liveOptions = useMemo(
+    () =>
+      LIVE_INTERVALS_MS.map((ms) => ({
+        value: String(ms),
+        label: t(`quota_management.live_interval_${ms}`),
+      })),
+    [t]
+  );
+
   const sortOptions = useMemo(
     () =>
       QUOTA_SORT_MODES.map((mode) => ({ value: mode, label: t(`quota_management.sort_${mode}`) })),
@@ -290,6 +306,13 @@ export function QuotaPage() {
 
   const canUseActions = !disableControls && !loading && filesGeneration === sessionGeneration;
 
+  // Load every credential on the page without a click, then keep them fresh.
+  useQuotaLiveRefresh(pageItems, canUseActions && !error);
+  const claudePoolStatus = useClaudePoolStatus(
+    canUseActions && pageItems.some((entry) => entry.type === 'claude'),
+    liveIntervalMs
+  );
+
   /* ---------- 首屏卡片一次性级联入场 ----------
    * 首批数据渲染后立即翻转 cardsAnimated；已挂载的卡片在挂载时捕获过自己的
    * 延迟（QuotaCard 内 useState 初始化），后续切 tab/翻页/刷新新挂载的卡片
@@ -362,14 +385,25 @@ export function QuotaPage() {
               </button>
             )}
           </div>
-          <div className={styles.sort}>
-            <Select
-              value={sortMode}
-              options={sortOptions}
-              onChange={handleSortModeChange}
-              ariaLabel={t('quota_management.sort_label')}
-              size="sm"
-            />
+          <div className={styles.controls}>
+            <div className={styles.sort}>
+              <Select
+                value={String(liveIntervalMs)}
+                options={liveOptions}
+                onChange={(next) => setLiveIntervalMs(Number(next))}
+                ariaLabel={t('quota_management.live_label')}
+                size="sm"
+              />
+            </div>
+            <div className={styles.sort}>
+              <Select
+                value={sortMode}
+                options={sortOptions}
+                onChange={handleSortModeChange}
+                ariaLabel={t('quota_management.sort_label')}
+                size="sm"
+              />
+            </div>
           </div>
         </div>
 
@@ -424,6 +458,11 @@ export function QuotaPage() {
                 canRefresh={canUseActions && !entry.file.disabled}
                 resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
                 entranceDelayMs={cardEntranceDelay(index)}
+                claudePool={
+                  entry.type === 'claude'
+                    ? resolveClaudePoolInfo(claudePoolStatus, entry.file)
+                    : null
+                }
                 onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
                 onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
               />

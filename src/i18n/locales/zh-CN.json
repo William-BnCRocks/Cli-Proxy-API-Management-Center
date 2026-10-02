@@ -496,7 +496,32 @@
     "plan_max": "Max",
     "plan_max5": "Max 5x",
     "plan_max20": "Max 20x",
-    "plan_team": "团队版"
+    "plan_team": "团队版",
+    "window_other": "其他限额（{{name}}）",
+    "fable_budget": "Fable 5 额度",
+    "status_label": "状态",
+    "renews_label": "续费（预估）",
+    "renews_hint": "根据订阅开始日期估算；Anthropic 不向 OAuth 令牌提供账单日期。",
+    "trial_ends_label": "试用结束",
+    "extra_usage_off": "未开启",
+    "extra_usage_on": "已开启",
+    "credit_balance_label": "额度余额",
+    "credit_used_of": "已用 {{used}} / {{limit}}",
+    "credit_used": "已用 {{used}}",
+    "credit_limit_reached": "已达上限",
+    "budget_left": "剩余 {{left}}（总额 {{limit}}）",
+    "breakdown_label": "7 天用量来源：",
+    "breakdown_hint": "此账号 7 天用量按来源的占比",
+    "pool_rank_label": "池内排名",
+    "pool_rank_value": "第 {{rank}} / {{count}}",
+    "pool_rank_hint": "claude-pool 排名中的位置（第 1 = 下一个新会话使用）",
+    "pool_next_label": "下一个新会话",
+    "pool_next_hint": "claude-pool 会把下一个新会话分配给此账号",
+    "pool_ineligible": "未参与轮转",
+    "pace_tooltip": "计划：此刻应已用 {{planned}}% · 实际：{{actual}}%",
+    "pace_on_plan": "符合计划",
+    "pace_over": "超出计划 {{points}} 个百分点（此刻计划 {{planned}}%）",
+    "pace_under": "低于计划 {{points}} 个百分点（此刻计划 {{planned}}%）"
   },
   "codex_quota": {
     "title": "Codex 额度",
@@ -1581,7 +1606,22 @@
     "weekday_wed": "三",
     "weekday_thu": "四",
     "weekday_fri": "五",
-    "weekday_sat": "六"
+    "weekday_sat": "六",
+    "percent_left": "剩余 {{percent}}%",
+    "live_label": "自动刷新间隔",
+    "live_interval_0": "自动刷新：已暂停",
+    "live_interval_30000": "自动刷新：30 秒",
+    "live_interval_60000": "自动刷新：1 分钟",
+    "live_interval_120000": "自动刷新：2 分钟",
+    "live_interval_300000": "自动刷新：5 分钟",
+    "live_updated": "{{ago}}前更新",
+    "live_updated_now": "刚刚更新",
+    "live_span_seconds": "{{n}} 秒",
+    "live_span_minutes": "{{n}} 分钟",
+    "live_span_hours": "{{n}} 小时",
+    "live_rate_limited": "触发限流 · {{wait}}后重试",
+    "live_failed": "刷新失败 · {{wait}}后重试",
+    "live_paused_hint": "自动刷新已暂停；点击刷新可更新此卡片"
   },
   "plugin_management": {
     "title": "插件管理",
@@ -2222,6 +2262,9 @@
     "ineligible": "此账户不符合资格。",
     "unavailable": "重置暂不可用。",
     "rate_limited": "请求过于频繁。",
-    "auth_error": "授权被拒绝。"
+    "auth_error": "授权被拒绝。",
+    "expiry_title": "已存重置到期时间（{{timezone}}）",
+    "grant_row": "剩余 {{left}} / {{total}}",
+    "no_expiry": "无到期时间"
   }
 }

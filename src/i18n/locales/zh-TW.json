@@ -496,7 +496,32 @@
     "plan_max": "Max",
     "plan_max5": "Max 5x",
     "plan_max20": "Max 20x",
-    "plan_team": "團隊版"
+    "plan_team": "團隊版",
+    "window_other": "其他限額（{{name}}）",
+    "fable_budget": "Fable 5 額度",
+    "status_label": "狀態",
+    "renews_label": "續費（預估）",
+    "renews_hint": "依訂閱開始日期估算；Anthropic 不向 OAuth 權杖提供帳單日期。",
+    "trial_ends_label": "試用結束",
+    "extra_usage_off": "未開啟",
+    "extra_usage_on": "已開啟",
+    "credit_balance_label": "額度餘額",
+    "credit_used_of": "已用 {{used}} / {{limit}}",
+    "credit_used": "已用 {{used}}",
+    "credit_limit_reached": "已達上限",
+    "budget_left": "剩餘 {{left}}（總額 {{limit}}）",
+    "breakdown_label": "7 天用量來源：",
+    "breakdown_hint": "此帳號 7 天用量依來源的占比",
+    "pool_rank_label": "池內排名",
+    "pool_rank_value": "第 {{rank}} / {{count}}",
+    "pool_rank_hint": "claude-pool 排名中的位置（第 1 = 下一個新工作階段使用）",
+    "pool_next_label": "下一個新工作階段",
+    "pool_next_hint": "claude-pool 會把下一個新工作階段分配給此帳號",
+    "pool_ineligible": "未參與輪替",
+    "pace_tooltip": "計畫：此刻應已用 {{planned}}% · 實際：{{actual}}%",
+    "pace_on_plan": "符合計畫",
+    "pace_over": "超出計畫 {{points}} 個百分點（此刻計畫 {{planned}}%）",
+    "pace_under": "低於計畫 {{points}} 個百分點（此刻計畫 {{planned}}%）"
   },
   "codex_quota": {
     "title": "Codex 配額",
@@ -1607,7 +1632,22 @@
     "weekday_wed": "三",
     "weekday_thu": "四",
     "weekday_fri": "五",
-    "weekday_sat": "六"
+    "weekday_sat": "六",
+    "percent_left": "剩餘 {{percent}}%",
+    "live_label": "自動重新整理間隔",
+    "live_interval_0": "自動重新整理：已暫停",
+    "live_interval_30000": "自動重新整理：30 秒",
+    "live_interval_60000": "自動重新整理：1 分鐘",
+    "live_interval_120000": "自動重新整理：2 分鐘",
+    "live_interval_300000": "自動重新整理：5 分鐘",
+    "live_updated": "{{ago}}前更新",
+    "live_updated_now": "剛剛更新",
+    "live_span_seconds": "{{n}} 秒",
+    "live_span_minutes": "{{n}} 分鐘",
+    "live_span_hours": "{{n}} 小時",
+    "live_rate_limited": "觸發限流 · {{wait}}後重試",
+    "live_failed": "重新整理失敗 · {{wait}}後重試",
+    "live_paused_hint": "自動重新整理已暫停；點擊重新整理可更新此卡片"
   },
   "plugin_management": {
     "title": "插件管理",
@@ -2248,6 +2288,9 @@
     "ineligible": "此帳戶不符合資格。",
     "unavailable": "重置暫不可用。",
     "rate_limited": "請求過於頻繁。",
-    "auth_error": "授權遭拒。"
+    "auth_error": "授權遭拒。",
+    "expiry_title": "已存重置到期時間（{{timezone}}）",
+    "grant_row": "剩餘 {{left}} / {{total}}",
+    "no_expiry": "無到期時間"
   }
 }

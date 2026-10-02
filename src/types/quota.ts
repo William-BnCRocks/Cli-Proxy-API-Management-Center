@@ -2,6 +2,8 @@
  * Quota management types.
  */
 
+import type { AnthropicResetGrantStatus } from '@/services/api/claudeResetGrants';
+
 // Theme types
 export type ThemeColors = { bg: string; text: string; border?: string };
 export type TypeColorSet = { light: ThemeColors; dark?: ThemeColors };
@@ -100,6 +102,11 @@ export interface CodexUsagePayload {
 export interface ClaudeUsageWindow {
   utilization: number;
   resets_at: string | null;
+  /** Dollar-denominated buckets (e.g. the monthly Fable budget) carry these three. */
+  limit_dollars?: number | null;
+  used_dollars?: number | null;
+  remaining_dollars?: number | null;
+  locked_reason?: string | null;
 }
 
 export interface ClaudeUsageLimit {
@@ -118,9 +125,39 @@ export interface ClaudeUsageLimit {
 
 export interface ClaudeExtraUsage {
   is_enabled: boolean;
-  monthly_limit: number;
-  used_credits: number;
+  /** Minor currency units (cents for USD); null while extra usage is off. */
+  monthly_limit: number | null;
+  used_credits: number | null;
   utilization: number | null;
+  currency?: string | null;
+  decimal_places?: number | null;
+  disabled_reason?: string | null;
+  user_disabled?: boolean | null;
+  spend_limit_reached?: boolean | null;
+}
+
+export interface ClaudeMoney {
+  amount_minor?: number | null;
+  currency?: string | null;
+  exponent?: number | null;
+}
+
+/** Prepaid-credit / spend block of the usage payload. Every field may be null. */
+export interface ClaudeSpend {
+  used?: ClaudeMoney | null;
+  limit?: ClaudeMoney | null;
+  balance?: ClaudeMoney | null;
+  cap?: ClaudeMoney | null;
+  percent?: number | null;
+  enabled?: boolean | null;
+  disabled_reason?: string | null;
+  can_purchase_credits?: boolean | null;
+}
+
+export interface ClaudeUsageBreakdownRow {
+  key?: string | null;
+  display_name?: string | null;
+  percent?: number | null;
 }
 
 export interface ClaudeUsagePayload {
@@ -133,6 +170,10 @@ export interface ClaudeUsagePayload {
   iguana_necktie?: ClaudeUsageWindow | null;
   limits?: ClaudeUsageLimit[] | null;
   extra_usage?: ClaudeExtraUsage | null;
+  spend?: ClaudeSpend | null;
+  /** Banked-reset programme; only present when requested with ?cedar_ember=1. */
+  cedar_ember?: unknown;
+  seven_day_breakdown?: { rows?: ClaudeUsageBreakdownRow[] | null } | null;
 }
 
 export interface ClaudeProfileResponse {
@@ -154,6 +195,7 @@ export interface ClaudeProfileResponse {
     has_extra_usage_enabled?: boolean;
     subscription_status?: string;
     subscription_created_at?: string;
+    claude_code_trial_ends_at?: string | null;
   };
 }
 
@@ -171,12 +213,45 @@ export interface ClaudeQuotaWindow {
   resetAtMs?: number | null;
   /** Window length in hours — 5 for the rolling window, 168 for the weekly ones. */
   periodHours?: number | null;
+  /** Dollar figures when the bucket is denominated in money (all optional). */
+  usedDollars?: number | null;
+  limitDollars?: number | null;
+  remainingDollars?: number | null;
+}
+
+/** A money-denominated allowance (e.g. the monthly Fable credit). Not a rate-limit window. */
+export interface ClaudeQuotaBudget {
+  id: string;
+  label: string;
+  labelKey?: string;
+  usedPercent: number | null;
+  resetLabel: string;
+  resetAtMs?: number | null;
+  usedDollars: number | null;
+  limitDollars: number | null;
+  remainingDollars: number | null;
+}
+
+/** Subscription facts from the profile endpoint; renewal is an estimate (see claude/account.ts). */
+export interface ClaudeSubscriptionInfo {
+  status: string | null;
+  billingType: string | null;
+  startedAtMs: number | null;
+  renewsAtMs: number | null;
+  trialEndsAtMs: number | null;
 }
 
 export interface ClaudeQuotaState {
   status: 'idle' | 'loading' | 'success' | 'error';
   windows: ClaudeQuotaWindow[];
+  budgets?: ClaudeQuotaBudget[];
   extraUsage?: ClaudeExtraUsage | null;
+  spend?: ClaudeSpend | null;
+  subscription?: ClaudeSubscriptionInfo | null;
+  /** Parsed banked-reset grants (cedar_ember); null when the block is absent/malformed. */
+  resetGrants?: AnthropicResetGrantStatus | null;
+  /** Share of 7-day usage by surface (Claude Code, Chats, ...). */
+  breakdown?: { key: string; label: string; percent: number }[];
   planType?: string | null;
   error?: string;
   errorStatus?: number;

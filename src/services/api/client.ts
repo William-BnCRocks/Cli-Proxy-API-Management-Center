@@ -10,6 +10,7 @@ import {
   CPA_BUILD_DATE_HEADER_KEYS,
   CPA_SUPPORT_PLUGIN_HEADER_KEYS,
   CPA_VERSION_HEADER_KEYS,
+  MANAGEMENT_API_PREFIX,
   REQUEST_TIMEOUT_MS,
   VERSION_HEADER_KEYS,
 } from '@/utils/constants';
@@ -54,6 +55,13 @@ class ApiClient {
   /** Guards read/modify/write operations across connection changes, including ABA switches. */
   getConnectionRevision(): number {
     return this.connectionRevision;
+  }
+
+  /** Server origin (no management prefix), for plugin routes served under /v0/management. */
+  getServerOrigin(): string {
+    return this.apiBase.endsWith(MANAGEMENT_API_PREFIX)
+      ? this.apiBase.slice(0, -MANAGEMENT_API_PREFIX.length)
+      : this.apiBase;
   }
 
   private readHeader(headers: Record<string, unknown> | undefined, keys: string[]): string | null {
