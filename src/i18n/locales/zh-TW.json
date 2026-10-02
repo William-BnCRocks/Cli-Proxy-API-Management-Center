@@ -1647,7 +1647,12 @@
     "live_span_hours": "{{n}} 小時",
     "live_rate_limited": "觸發限流 · {{wait}}後重試",
     "live_failed": "重新整理失敗 · {{wait}}後重試",
-    "live_paused_hint": "自動重新整理已暫停；點擊重新整理可更新此卡片"
+    "live_paused_hint": "自動重新整理已暫停；點擊重新整理可更新此卡片",
+    "live_polled": "{{ago}}前輪詢",
+    "live_from_traffic": "{{ago}}前來自即時流量",
+    "live_plugin_hint": "資料來自 claude-pool 快取；瀏覽器不會直接請求 Anthropic 或 ChatGPT",
+    "live_refresh_requested": "已請求 claude-pool 重新輪詢 {{name}}",
+    "live_refresh_throttled": "剛剛重新整理過，請 {{wait}} 秒後再試"
   },
   "plugin_management": {
     "title": "插件管理",

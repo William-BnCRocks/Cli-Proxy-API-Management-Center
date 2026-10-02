@@ -18,6 +18,8 @@ import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from '../provider
 import { enrichQuotaInBackground } from '../quotaEnrichment';
 import { LIVE_CONCURRENCY, mapWithConcurrency } from '../liveRefresh';
 import { currentLiveKey, useQuotaLiveStore } from '../liveStore';
+import { isPluginBackedType } from '../pluginCards';
+import { requestPluginRefresh, syncPluginCards } from '../pluginSource';
 import type { QuotaProviderType } from '../providers/types';
 
 interface BatchFetchResult {
@@ -37,7 +39,21 @@ export function useQuotaBatchLoader() {
   const requestIdRef = useRef(0);
 
   const loadQuota = useCallback(
-    async (targets: QuotaFileEntry[]) => {
+    async (allTargets: QuotaFileEntry[]) => {
+      // Claude/Codex are served by the claude-pool cache when it exists: re-read it and ask the
+      // plugin to re-poll these credentials (it throttles); never call upstream from here.
+      const mode = useQuotaLiveStore.getState().source;
+      const pluginBacked = allTargets.filter((entry) => isPluginBackedType(entry.type));
+      const targets =
+        mode === 'direct'
+          ? allTargets
+          : allTargets.filter((entry) => !isPluginBackedType(entry.type));
+      if (mode === 'plugin' && pluginBacked.length > 0) {
+        void syncPluginCards();
+        void mapWithConcurrency(pluginBacked, LIVE_CONCURRENCY, ({ file }) =>
+          requestPluginRefresh(file.name)
+        );
+      }
       if (loadingRef.current) return;
       if (targets.length === 0) return;
       loadingRef.current = true;

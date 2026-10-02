@@ -52,6 +52,7 @@ import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
 import { useQuotaLiveRefresh } from './hooks/useQuotaLiveRefresh';
 import { useClaudePoolStatus } from './hooks/useClaudePoolStatus';
+import { usePluginQuotaSource } from './hooks/usePluginQuotaSource';
 import { resolveClaudePoolInfo } from './claudePool';
 import { intervalsFor } from './liveRefresh';
 import { useQuotaLiveStore } from './liveStore';
@@ -308,6 +309,7 @@ export function QuotaPage() {
   const canUseActions = !disableControls && !loading && filesGeneration === sessionGeneration;
 
   // Load every credential on the page without a click, then keep them fresh.
+  usePluginQuotaSource(canUseActions && !error);
   useQuotaLiveRefresh(pageItems, canUseActions && !error);
   const claudePoolStatus = useClaudePoolStatus(
     canUseActions && pageItems.some((entry) => entry.type === 'claude'),
