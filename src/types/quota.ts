@@ -325,6 +325,7 @@ export interface CodexQuotaState {
   rateLimitResetCreditsApplicableAvailableCount?: number | null;
   rateLimitResetCredits?: CodexRateLimitResetCredit[];
   rateLimitResetCreditsError?: string;
+  limitReached?: boolean;
   error?: string;
   errorStatus?: number;
 }

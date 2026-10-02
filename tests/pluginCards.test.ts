@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { apiClient } from '@/services/api/client';
 import {
+  fetchPluginCards,
   PLUGIN_QUOTA_CARDS_PATH,
   PLUGIN_QUOTA_REFRESH_PATH,
   claudeCardToData,
@@ -266,6 +268,35 @@ describe('claude-pool quota cards', () => {
   });
 });
 
+test('flags a Codex plan whose limit is reached', () => {
+  const parsed = parsePluginCards({
+    cards: [
+      {
+        provider: 'codex',
+        name: 'codex-b.json',
+        data_at: T0,
+        normalized: {
+          plan: 'pro',
+          limit_reached: true,
+          windows: [
+            {
+              id: 'weekly',
+              label: 'Weekly limit',
+              used_percent: 100,
+              remaining_percent: 0,
+              resets_at: T0 + 3600,
+              period_hours: 168,
+            },
+          ],
+        },
+      },
+    ],
+  });
+  const data = codexCardToData(parsed!.cards[0]);
+  expect(data.limitReached).toBe(true);
+  expect(data.windows[0].usedPercent).toBe(100);
+});
+
 describe('source-specific intervals', () => {
   test('direct polling defaults to 2 minutes with no 30 s option; plugin mode keeps it', () => {
     expect(defaultIntervalFor('direct')).toBe(DEFAULT_DIRECT_INTERVAL_MS);
@@ -275,5 +306,45 @@ describe('source-specific intervals', () => {
     expect(PLUGIN_INTERVALS_MS).toContain(30_000);
     expect(intervalsFor('direct')).not.toContain(30_000);
     expect(intervalsFor('plugin')).toContain(30_000);
+  });
+});
+
+describe('plugin probe', () => {
+  const original = apiClient.get.bind(apiClient);
+  const withGet = async (get: (url: string) => Promise<unknown>, run: () => Promise<void>) => {
+    apiClient.setConfig({ apiBase: 'http://argus.test:8317', managementKey: 'test-key' });
+    (apiClient as unknown as { get: typeof get }).get = get;
+    try {
+      await run();
+    } finally {
+      (apiClient as unknown as { get: typeof original }).get = original;
+    }
+  };
+
+  test('reads the v0 route on the server origin and parses a good answer', async () => {
+    let seen = '';
+    await withGet(
+      async (url) => {
+        seen = url;
+        return response;
+      },
+      async () => {
+        expect((await fetchPluginCards())?.cards).toHaveLength(3);
+      }
+    );
+    expect(seen).toBe('http://argus.test:8317/v0/management/plugins/claude-pool/quota/cards');
+  });
+
+  test('a missing route, an error or another shape means "no plugin" (null, never a throw)', async () => {
+    await withGet(
+      async () => {
+        throw Object.assign(new Error('Not Found'), { status: 404 });
+      },
+      async () => expect(await fetchPluginCards()).toBeNull()
+    );
+    await withGet(
+      async () => '<html>management</html>',
+      async () => expect(await fetchPluginCards()).toBeNull()
+    );
   });
 });

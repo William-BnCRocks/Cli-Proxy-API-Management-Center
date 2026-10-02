@@ -59,6 +59,8 @@ export type CodexQuotaData = {
   rateLimitResetCredits: CodexRateLimitResetCredit[];
   rateLimitResetCreditsError: string;
   windows: CodexQuotaWindow[];
+  /** Set by the claude-pool source when ChatGPT reports the plan limit as reached. */
+  limitReached?: boolean;
 };
 
 export const buildCodexQuotaWindows = (

@@ -16,6 +16,9 @@ import {
 } from './pluginCards';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
 
+/** Marker message; the card shows it as a normal load failure until the first poll lands. */
+const AWAITING_POLL = 'claude-pool has not read this credential yet';
+
 /** Cards that exist but have never been read have nothing to show yet. */
 const emptyReason = (card: PluginCard): string =>
   card.lastError ?? (card.kind ? `no data yet (${card.kind})` : 'no data yet');
@@ -33,6 +36,11 @@ export function commitPluginCards(response: PluginCardsResponse, nowMs: number =
           continue;
         }
         const data = type === 'claude' ? claudeCardToData(card) : codexCardToData(card);
+        // Passive header updates can create a card before the plugin has ever read the usage body.
+        if (data.windows.length === 0 && !('budgets' in data && data.budgets?.length)) {
+          next[card.name] = adapter.buildErrorState(AWAITING_POLL);
+          continue;
+        }
         next[card.name] = adapter.buildSuccessState(data);
         useQuotaLiveStore.getState().recordSuccess(currentLiveKey(type, card.name), nowMs, {
           source: card.source,

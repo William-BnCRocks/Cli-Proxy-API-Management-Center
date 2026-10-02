@@ -570,7 +570,8 @@
     "plan_free": "Free",
     "plan_pro": "Pro 20x",
     "plan_prolite": "Pro 5x",
-    "plan_business_premium": "Business Premium"
+    "plan_business_premium": "Business Premium",
+    "limit_reached": "Лимит исчерпан: запросы отклоняются до сброса окна"
   },
   "devin_quota": {
     "daily": "Остаток на день",

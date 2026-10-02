@@ -567,7 +567,8 @@
     "plan_free": "Free",
     "plan_pro": "Pro 20x",
     "plan_prolite": "Pro 5x",
-    "plan_business_premium": "Business Premium"
+    "plan_business_premium": "Business Premium",
+    "limit_reached": "Usage limit reached: requests are refused until the window resets"
   },
   "devin_quota": {
     "daily": "Daily remaining",

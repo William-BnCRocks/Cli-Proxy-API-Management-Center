@@ -316,6 +316,7 @@ export function codexCardToData(card: PluginCard): CodexQuotaData {
     rateLimitResetCredits: resetCredits,
     rateLimitResetCreditsError: '',
     windows,
+    limitReached: n.limit_reached === true,
   };
 }
 
