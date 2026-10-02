@@ -35,12 +35,35 @@ export function formatCodexResetLabel(window?: CodexUsageWindow | null): string 
   return '-';
 }
 
-export function createStatusError(message: string, status?: number): Error & { status?: number } {
-  const error = new Error(message) as Error & { status?: number };
+export function createStatusError(
+  message: string,
+  status?: number,
+  retryAfterMs?: number | null
+): Error & { status?: number; retryAfterMs?: number } {
+  const error = new Error(message) as Error & { status?: number; retryAfterMs?: number };
   if (status !== undefined) {
     error.status = status;
   }
+  if (typeof retryAfterMs === 'number' && Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
+    error.retryAfterMs = retryAfterMs;
+  }
   return error;
+}
+
+/** Retry-After (delta-seconds or HTTP date) from an api-call response header map, in ms. */
+export function parseRetryAfterMs(
+  header: Record<string, string[] | string> | undefined,
+  nowMs: number = Date.now()
+): number | null {
+  if (!header) return null;
+  const key = Object.keys(header).find((name) => name.toLowerCase() === 'retry-after');
+  if (!key) return null;
+  const raw = header[key];
+  const value = (Array.isArray(raw) ? raw[0] : raw)?.trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return Number(value) * 1000;
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? null : Math.max(0, date - nowMs);
 }
 
 export function getStatusFromError(err: unknown): number | undefined {

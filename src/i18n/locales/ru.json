@@ -501,7 +501,32 @@
     "plan_max": "Max",
     "plan_max5": "Max 5x",
     "plan_max20": "Max 20x",
-    "plan_team": "Team"
+    "plan_team": "Team",
+    "window_other": "Другой лимит ({{name}})",
+    "fable_budget": "Кредит Fable 5 (в месяц)",
+    "status_label": "Статус",
+    "renews_label": "Продление (оценка)",
+    "renews_hint": "Оценка по дате начала подписки. Anthropic не отдаёт дату списания OAuth-токенам.",
+    "trial_ends_label": "Пробный период до",
+    "extra_usage_off": "Выкл.",
+    "extra_usage_on": "Вкл.",
+    "credit_balance_label": "Баланс кредитов",
+    "credit_used_of": "Использовано {{used}} / {{limit}}",
+    "credit_used": "Использовано {{used}}",
+    "credit_limit_reached": "лимит достигнут",
+    "budget_left": "Осталось {{left}} из {{limit}}",
+    "breakdown_label": "Использование за 7 дней по источникам:",
+    "breakdown_hint": "Доля 7-дневного использования аккаунта по источникам",
+    "pool_rank_label": "Место в пуле",
+    "pool_rank_value": "№{{rank}} из {{count}}",
+    "pool_rank_hint": "Позиция в рейтинге claude-pool (1 = для следующей новой сессии)",
+    "pool_next_label": "Следующая новая сессия",
+    "pool_next_hint": "claude-pool направит следующую новую сессию на этот аккаунт",
+    "pool_ineligible": "Не в ротации",
+    "pace_tooltip": "План: к этому моменту {{planned}}% · факт: {{actual}}%",
+    "pace_on_plan": "По плану",
+    "pace_over": "Выше плана на {{points}} п.п. (по плану {{planned}}%)",
+    "pace_under": "Ниже плана на {{points}} п.п. (по плану {{planned}}%)"
   },
   "codex_quota": {
     "title": "Квота Codex",
@@ -1586,7 +1611,22 @@
     "weekday_wed": "Ср",
     "weekday_thu": "Чт",
     "weekday_fri": "Пт",
-    "weekday_sat": "Сб"
+    "weekday_sat": "Сб",
+    "percent_left": "осталось {{percent}}%",
+    "live_label": "Интервал автообновления",
+    "live_interval_0": "Автообновление: пауза",
+    "live_interval_30000": "Автообновление: 30 с",
+    "live_interval_60000": "Автообновление: 1 мин",
+    "live_interval_120000": "Автообновление: 2 мин",
+    "live_interval_300000": "Автообновление: 5 мин",
+    "live_updated": "Обновлено {{ago}} назад",
+    "live_updated_now": "Обновлено только что",
+    "live_span_seconds": "{{n}} с",
+    "live_span_minutes": "{{n}} мин",
+    "live_span_hours": "{{n}} ч",
+    "live_rate_limited": "Лимит запросов · повтор через {{wait}}",
+    "live_failed": "Не удалось обновить · повтор через {{wait}}",
+    "live_paused_hint": "Автообновление на паузе; нажмите «Обновить», чтобы обновить карточку"
   },
   "plugin_management": {
     "title": "Управление плагинами",
@@ -2218,6 +2258,9 @@
     "ineligible": "Эта учётная запись не соответствует условиям.",
     "unavailable": "Сбросы временно недоступны.",
     "rate_limited": "Слишком много запросов.",
-    "auth_error": "Авторизация отклонена."
+    "auth_error": "Авторизация отклонена.",
+    "expiry_title": "Сроки действия накопленных сбросов ({{timezone}})",
+    "grant_row": "Осталось {{left}} из {{total}}",
+    "no_expiry": "Без срока"
   }
 }

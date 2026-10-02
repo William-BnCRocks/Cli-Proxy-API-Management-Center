@@ -10,9 +10,9 @@
 import { useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconRefreshCw } from '@/components/ui/icons';
-import type { ResolvedTheme } from '@/types';
+import type { ClaudeQuotaState, ResolvedTheme } from '@/types';
 import { resolveQuotaErrorMessage } from '@/utils/quota';
-import { getQuotaDisplayName } from '@/utils/quota/identity';
+import { getQuotaCacheKey, getQuotaDisplayName } from '@/utils/quota/identity';
 import {
   getAuthFileIcon,
   getThemeSurfaceIconBackground,
@@ -23,6 +23,9 @@ import { bindQuotaClasses } from '../types';
 import { QUOTA_ADAPTERS, type QuotaCardState } from '../providers';
 import { isQuotaRefreshDisabled, type QuotaFileEntry } from '../logic';
 import { useClaudeResetGrants } from '../providers/claude/ClaudeResetGrants';
+import type { ClaudePoolInfo } from '../claudePool';
+import { currentLiveKey } from '../liveStore';
+import { QuotaLiveStatus } from './QuotaLiveStatus';
 import bodyStyles from './QuotaBody.module.scss';
 import styles from './QuotaCard.module.scss';
 
@@ -37,6 +40,8 @@ export type QuotaCardProps = {
   resetting: boolean;
   /** 首屏级联入场延迟；null = 不入场（切 tab / 翻页 / 刷新新挂载的卡片）。 */
   entranceDelayMs?: number | null;
+  /** Optional claude-pool data for this credential (Claude cards only). */
+  claudePool?: ClaudePoolInfo | null;
   onRefresh: () => void;
   onReset: () => void;
 };
@@ -49,6 +54,7 @@ export function QuotaCard(props: QuotaCardProps) {
     canRefresh,
     resetting,
     entranceDelayMs,
+    claudePool,
     onRefresh,
     onReset,
   } = props;
@@ -70,7 +76,7 @@ export function QuotaCard(props: QuotaCardProps) {
     file,
     entry.type === 'claude' && status !== 'idle',
     !canRefresh || loading || resetting,
-    quota,
+    (quota as ClaudeQuotaState | undefined)?.resetGrants ?? null,
     onRefresh
   );
   const iconSrc = getAuthFileIcon(entry.type, resolvedTheme);
@@ -153,7 +159,7 @@ export function QuotaCard(props: QuotaCardProps) {
             {t(`${adapter.i18nPrefix}.load_failed`, { message: errorMessage })}
           </div>
         ) : quota ? (
-          <adapter.Body quota={quota} classes={quotaClasses} />
+          <adapter.Body quota={quota} classes={quotaClasses} claudePool={claudePool} />
         ) : (
           <div className={styles.idleHint}>{t(`${adapter.i18nPrefix}.idle`)}</div>
         )}
@@ -161,6 +167,11 @@ export function QuotaCard(props: QuotaCardProps) {
 
       {status !== 'idle' && (
         <footer className={styles.actionRow}>
+          <QuotaLiveStatus
+            liveKey={currentLiveKey(entry.type, getQuotaCacheKey(file))}
+            className={styles.liveStatus}
+            errorClassName={`${styles.liveStatus} ${styles.liveStatusError}`}
+          />
           {entry.type === 'claude' && (
             <button
               type="button"

@@ -498,7 +498,32 @@
     "plan_max": "Max",
     "plan_max5": "Max 5x",
     "plan_max20": "Max 20x",
-    "plan_team": "Team"
+    "plan_team": "Team",
+    "window_other": "Other limit ({{name}})",
+    "fable_budget": "Fable 5 credit (monthly)",
+    "status_label": "Status",
+    "renews_label": "Renews (est.)",
+    "renews_hint": "Estimated from the subscription start date. Anthropic does not expose the billing date to OAuth tokens.",
+    "trial_ends_label": "Trial ends",
+    "extra_usage_off": "Off",
+    "extra_usage_on": "On",
+    "credit_balance_label": "Credit balance",
+    "credit_used_of": "{{used}} / {{limit}} used",
+    "credit_used": "{{used}} used",
+    "credit_limit_reached": "limit reached",
+    "budget_left": "{{left}} left of {{limit}}",
+    "breakdown_label": "7-day use by source:",
+    "breakdown_hint": "Share of this account’s 7-day usage by surface",
+    "pool_rank_label": "Pool rank",
+    "pool_rank_value": "#{{rank}} of {{count}}",
+    "pool_rank_hint": "Position in the claude-pool ranking (1 = used for the next new session)",
+    "pool_next_label": "Next new session",
+    "pool_next_hint": "claude-pool will route the next new session to this account",
+    "pool_ineligible": "Not in rotation",
+    "pace_tooltip": "Plan: {{planned}}% used by now · actual: {{actual}}%",
+    "pace_on_plan": "On plan",
+    "pace_over": "{{points}} pts over plan ({{planned}}% planned by now)",
+    "pace_under": "{{points}} pts under plan ({{planned}}% planned by now)"
   },
   "codex_quota": {
     "title": "Codex Quota",
@@ -1583,7 +1608,22 @@
     "weekday_wed": "Wed",
     "weekday_thu": "Thu",
     "weekday_fri": "Fri",
-    "weekday_sat": "Sat"
+    "weekday_sat": "Sat",
+    "percent_left": "{{percent}}% left",
+    "live_label": "Auto-refresh interval",
+    "live_interval_0": "Auto-refresh: paused",
+    "live_interval_30000": "Auto-refresh: 30 s",
+    "live_interval_60000": "Auto-refresh: 1 min",
+    "live_interval_120000": "Auto-refresh: 2 min",
+    "live_interval_300000": "Auto-refresh: 5 min",
+    "live_updated": "Updated {{ago}} ago",
+    "live_updated_now": "Updated just now",
+    "live_span_seconds": "{{n}}s",
+    "live_span_minutes": "{{n}}m",
+    "live_span_hours": "{{n}}h",
+    "live_rate_limited": "Rate limited · retry in {{wait}}",
+    "live_failed": "Refresh failed · retry in {{wait}}",
+    "live_paused_hint": "Auto-refresh is paused; use Refresh to update this card"
   },
   "plugin_management": {
     "title": "Plugin Management",
@@ -2224,6 +2264,9 @@
     "ineligible": "This account is not eligible.",
     "unavailable": "Resets are currently unavailable.",
     "rate_limited": "Request rate limited.",
-    "auth_error": "Authorization was refused."
+    "auth_error": "Authorization was refused.",
+    "expiry_title": "Banked resets expire ({{timezone}})",
+    "grant_row": "{{left}} of {{total}} left",
+    "no_expiry": "No expiry"
   }
 }

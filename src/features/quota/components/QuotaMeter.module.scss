@@ -1,0 +1,18 @@
+/* Pace tick over a quota bar (claude-pool integration). The host is only
+ * rendered when a marker exists, so ordinary meters keep their exact markup. */
+
+.markerHost {
+  position: relative;
+}
+
+.marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-primary);
+  opacity: 0.75;
+  pointer-events: auto;
+}

@@ -16,6 +16,8 @@ import { getQuotaCacheKey } from '@/utils/quota/identity';
 import type { QuotaFileEntry } from '../logic';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from '../providers';
 import { enrichQuotaInBackground } from '../quotaEnrichment';
+import { LIVE_CONCURRENCY, mapWithConcurrency } from '../liveRefresh';
+import { currentLiveKey, useQuotaLiveStore } from '../liveStore';
 import type { QuotaProviderType } from '../providers/types';
 
 interface BatchFetchResult {
@@ -25,6 +27,7 @@ interface BatchFetchResult {
   data?: unknown;
   error?: string;
   errorStatus?: number;
+  retryAfterMs?: number;
 }
 
 export function useQuotaBatchLoader() {
@@ -65,8 +68,11 @@ export function useQuotaBatchLoader() {
               });
             });
 
-            const results = await Promise.all(
-              entries.map(async ({ file }): Promise<BatchFetchResult> => {
+            // Bounded, so a page of 20 credentials is not 20 simultaneous upstream calls.
+            const results = await mapWithConcurrency(
+              entries,
+              LIVE_CONCURRENCY,
+              async ({ file }): Promise<BatchFetchResult> => {
                 const cacheKey = getQuotaCacheKey(file);
                 try {
                   const data = await adapter.fetchQuota(file, t);
@@ -79,9 +85,13 @@ export function useQuotaBatchLoader() {
                     status: 'error',
                     error: message,
                     errorStatus: getStatusFromError(err),
+                    retryAfterMs:
+                      typeof err === 'object' && err !== null && 'retryAfterMs' in err
+                        ? Number((err as { retryAfterMs?: unknown }).retryAfterMs)
+                        : undefined,
                   };
                 }
-              })
+              }
             );
 
             if (requestId !== requestIdRef.current) return;
@@ -101,6 +111,16 @@ export function useQuotaBatchLoader() {
                             result.errorStatus
                           );
                     committedStates.set(result.cacheKey, nextState[result.cacheKey]);
+                    const liveKey = currentLiveKey(type, result.cacheKey);
+                    if (result.status === 'success') {
+                      useQuotaLiveStore.getState().recordSuccess(liveKey);
+                    } else {
+                      useQuotaLiveStore.getState().recordFailure(liveKey, {
+                        status: result.errorStatus,
+                        message: result.error || '',
+                        retryAfterMs: result.retryAfterMs,
+                      });
+                    }
                   },
                   result.name
                 );

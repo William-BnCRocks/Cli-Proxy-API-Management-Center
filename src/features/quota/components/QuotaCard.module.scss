@@ -308,3 +308,17 @@
     animation: none;
   }
 }
+
+/* "Updated Xs ago" — left-aligned in the footer, pills stay right. */
+.liveStatus {
+  margin-right: auto;
+  align-self: center;
+  font-family: $font-mono;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  font-variant-numeric: tabular-nums;
+}
+
+.liveStatusError {
+  color: var(--warning-text);
+}

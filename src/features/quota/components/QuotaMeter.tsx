@@ -8,6 +8,7 @@
 
 import type { CSSProperties } from 'react';
 import type { QuotaClassMap } from '../types';
+import styles from './QuotaMeter.module.scss';
 
 export const QUOTA_PROGRESS_HIGH_THRESHOLD = 70;
 export const QUOTA_PROGRESS_MEDIUM_THRESHOLD = 30;
@@ -16,9 +17,15 @@ export interface QuotaMeterProps {
   percent: number | null;
   classes: QuotaClassMap;
   index?: number;
+  /**
+   * Optional pace tick on the same remaining-% scale (the claude-pool plan: where the
+   * fill should be if usage were on plan). Fill right of it = ahead, left of it = behind.
+   */
+  marker?: number | null;
+  markerLabel?: string;
 }
 
-export function QuotaMeter({ percent, classes, index }: QuotaMeterProps) {
+export function QuotaMeter({ percent, classes, index, marker, markerLabel }: QuotaMeterProps) {
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
   const normalized = percent === null ? null : clamp(percent, 0, 100);
   const fillClass =
@@ -35,9 +42,23 @@ export function QuotaMeter({ percent, classes, index }: QuotaMeterProps) {
     style['--meter-index'] = index;
   }
 
-  return (
+  const bar = (
     <div className={classes.quotaBar}>
       <div className={`${classes.quotaBarFill} ${fillClass}`} style={style} />
+    </div>
+  );
+  if (marker === undefined || marker === null || !Number.isFinite(marker)) return bar;
+
+  return (
+    <div className={styles.markerHost}>
+      {bar}
+      <span
+        className={styles.marker}
+        style={{ left: `${clamp(marker, 0, 100)}%` }}
+        title={markerLabel}
+        role="img"
+        aria-label={markerLabel}
+      />
     </div>
   );
 }
