@@ -18,6 +18,7 @@ import {
   claudeCardToData,
   codexCardToData,
   isPluginBackedType,
+  notePluginOffCards,
   parsePluginCards,
   xaiCardToData,
 } from '@/features/quota/pluginCards';
@@ -478,8 +479,9 @@ describe('xAI plugin cards', () => {
     expect(data.mode).toBe('billing');
     expect(data.periodType).toBe('weekly');
     expect(data.usagePercent).toBeNull();
-    expect(data.periodEnd).toBe(XAI_WEEK_END);
-    expect(data.resetAtMs).toBe(Date.parse(XAI_WEEK_END));
+    // The period is the plugin's normalized one (unix seconds), not the raw payload's string.
+    expect(data.periodEnd).toBe(new Date(1_791_513_665_000).toISOString());
+    expect(data.resetAtMs).toBe(1_791_513_665_000);
     expect(data.onDemandCapCents).toBe(0);
     expect(data.prepaidBalanceCents).toBe(0);
     expect(data.billingPeriodEnd).toBe('2026-11-01T00:00:00+00:00');
@@ -510,10 +512,62 @@ describe('xAI plugin cards', () => {
   test('carries xAI creditUsagePercent when the weekly payload has it', () => {
     const weekly = (xaiCardJson().raw as { billing_weekly: Record<string, unknown> })
       .billing_weekly;
+    // The plugin's normalized percent is authoritative.
     const data = xaiCardToData(
-      xaiCard({}, { billing_weekly: { ...weekly, creditUsagePercent: 37 } })
+      xaiCard({ normalized: { usage_percent: 37 } }, { billing_weekly: weekly })
     )!;
     expect(data.usagePercent).toBe(37);
+    // Without a normalized percent key (older shape) the raw one is used.
+    const legacy = xaiCardJson({}, { billing_weekly: { ...weekly, creditUsagePercent: 12 } });
+    delete (legacy.normalized as Record<string, unknown>).usage_percent;
+    expect(xaiCardToData(parsePluginCards({ cards: [legacy] })!.cards[0])!.usagePercent).toBe(12);
+  });
+
+  test('a rolled-over week: period and percent come from normalized, raw only adds billing extras', () => {
+    const staleWeekly = {
+      currentPeriod: {
+        type: 'USAGE_PERIOD_TYPE_WEEKLY',
+        start: '2026-09-25T02:41:05.713506+00:00',
+        end: '2026-10-02T02:41:05.713506+00:00',
+      },
+      creditUsagePercent: 88,
+      prepaidBalance: { val: 250 },
+      onDemandCap: { val: 1000 },
+      onDemandUsed: { val: 100 },
+    };
+    const data = xaiCardToData(
+      xaiCard(
+        { normalized: { usage_percent: 0, remaining_percent: 100 } },
+        { billing_weekly: staleWeekly }
+      )
+    )!;
+    expect(data.usagePercent).toBe(0);
+    expect(data.resetAtMs).toBe(1_791_513_665_000);
+    expect(data.periodEnd).toBe(new Date(1_791_513_665_000).toISOString());
+    expect(data.periodStart).toBe(new Date(1_790_908_865_000).toISOString());
+    expect(data.periodHours).toBe(168);
+    expect(data.prepaidBalanceCents).toBe(250);
+    expect(data.onDemandCapCents).toBe(1000);
+    // A null normalized percent means "not reported", not "keep the stale raw 88".
+    expect(xaiCardToData(xaiCard({}, { billing_weekly: staleWeekly }))!.usagePercent).toBeNull();
+  });
+
+  test('a truncated raw payload is ignored and the normalized block is used', () => {
+    const data = xaiCardToData(
+      xaiCard(
+        {},
+        {
+          billing_weekly: { truncated: true, prepaidBalance: { val: 999 } },
+          billing_monthly: { truncated: true, monthlyLimit: { val: 15000 } },
+        }
+      )
+    )!;
+    expect(data.periodType).toBe('weekly');
+    expect(data.resetAtMs).toBe(1_791_513_665_000);
+    expect(data.measured?.requests).toBe(12);
+    expect(data.monthlyLimitCents).toBeNull();
+    // Nothing from a cut-short payload leaks in; the normalized prepaid balance is used.
+    expect(data.prepaidBalanceCents).toBe(0);
   });
 
   test('measured and rate_limit may be null', () => {
@@ -684,6 +738,34 @@ describe('account-pool -> claude-pool 404 fallback', () => {
         expect(currentPoolBase()).toBe(ACCOUNT_POOL_BASE);
       }
     );
+  });
+});
+
+describe('xAI cards the plugin is not polling (kind off)', () => {
+  const off = { kind: 'off', data_at: null, normalized: { period: null, measured: null } };
+
+  test('an off card is not plugin-backed, only for that credential, and leaves no error state', () => {
+    useQuotaStore.getState().clearQuotaCache();
+    const parsed = parsePluginCards({
+      cards: [xaiCardJson({ ...off, name: 'xai-off.json' }), xaiCardJson({ name: 'xai-on.json' })],
+    })!;
+    commitPluginCards(parsed);
+    try {
+      expect(isPluginBackedType('xai', 'xai-off.json')).toBe(false);
+      expect(isPluginBackedType('xai', 'xai-on.json')).toBe(true);
+      expect(isPluginBackedType('xai')).toBe(true);
+      expect(isPluginBackedType('claude', 'xai-off.json')).toBe(true);
+      const { xaiQuota } = useQuotaStore.getState();
+      expect(xaiQuota['xai-off.json']).toBeUndefined();
+      expect(xaiQuota['xai-on.json']?.status).toBe('success');
+
+      // xai-poll turned back on: the credential is plugin-backed again.
+      commitPluginCards(parsePluginCards({ cards: [xaiCardJson({ name: 'xai-off.json' })] })!);
+      expect(isPluginBackedType('xai', 'xai-off.json')).toBe(true);
+    } finally {
+      notePluginOffCards([]);
+      useQuotaStore.getState().clearQuotaCache();
+    }
   });
 });
 

@@ -42,13 +42,26 @@ import type { CodexQuotaData } from './providers/codex/data';
 export const PLUGIN_QUOTA_CARDS_PATH = '/v0/management/plugins/account-pool/quota/cards';
 export const PLUGIN_QUOTA_REFRESH_PATH = '/v0/management/plugins/account-pool/quota/refresh';
 
+/** xAI credentials whose card the plugin served with kind "off" (xai-poll disabled): the browser polls those itself. */
+let pluginOffXaiNames: ReadonlySet<string> = new Set();
+
+/** Record which xAI credentials the plugin is not polling; called with every cards response. */
+export function notePluginOffCards(cards: readonly PluginCard[]): void {
+  pluginOffXaiNames = new Set(
+    cards.filter((card) => card.provider === 'xai' && card.kind === 'off').map((card) => card.name)
+  );
+}
+
 /**
  * Provider types whose numbers the account-pool plugin caches (so the browser need not
  * poll upstream). The legacy claude-pool plugin only ever served Claude and Codex, so
- * xAI stays on the direct path while only the legacy routes answer.
+ * xAI stays on the direct path while only the legacy routes answer. With `name`, an xAI
+ * credential the plugin reports as "off" is also not plugin-backed (direct path).
  */
-export const isPluginBackedType = (type: string): boolean =>
-  type === 'claude' || type === 'codex' || (type === 'xai' && !isLegacyPoolBase());
+export const isPluginBackedType = (type: string, name?: string): boolean =>
+  type === 'claude' ||
+  type === 'codex' ||
+  (type === 'xai' && !isLegacyPoolBase() && !(name !== undefined && pluginOffXaiNames.has(name)));
 
 type Json = Record<string, unknown>;
 
@@ -70,8 +83,9 @@ const iso = (value: unknown): string | null => {
 };
 
 export interface PluginCard {
-  provider: 'claude' | 'codex' | 'xai';
+  provider: 'claude' | 'codex' | 'xai' | 'opencode-go';
   name: string;
+  disabled: boolean;
   /** `poll` (the plugin asked upstream) or `passive` (read from real traffic's response headers). */
   source: string;
   /** Epoch ms of the newest data, or null before the first reading. */
@@ -82,6 +96,8 @@ export interface PluginCard {
   backoffUntilMs: number | null;
   lastError: string | null;
   kind: string | null;
+  /** Why the card has no data (kind off / no_data), when the plugin says. */
+  reason: string | null;
   normalized: Json;
   /** Upstream payloads as the plugin received them (xAI: billing_weekly, billing_monthly, user). */
   raw: Json;
@@ -100,7 +116,10 @@ export function parsePluginCards(raw: unknown): PluginCardsResponse | null {
     if (!isRecord(item)) continue;
     const name = str(item.name);
     const provider =
-      item.provider === 'claude' || item.provider === 'codex' || item.provider === 'xai'
+      item.provider === 'claude' ||
+      item.provider === 'codex' ||
+      item.provider === 'xai' ||
+      item.provider === 'opencode-go'
         ? item.provider
         : null;
     if (!name || !provider) continue;
@@ -108,6 +127,7 @@ export function parsePluginCards(raw: unknown): PluginCardsResponse | null {
     cards.push({
       provider,
       name,
+      disabled: item.disabled === true,
       source: str(item.source) ?? 'poll',
       dataAtMs: ms(item.data_at),
       passiveAtMs: ms(item.passive_at),
@@ -115,6 +135,7 @@ export function parsePluginCards(raw: unknown): PluginCardsResponse | null {
       backoffUntilMs: ms(item.backoff_until),
       lastError: error,
       kind: str(item.kind),
+      reason: str(item.reason),
       normalized: isRecord(item.normalized) ? item.normalized : {},
       raw: isRecord(item.raw) ? item.raw : {},
     });
@@ -346,8 +367,9 @@ export function codexCardToData(card: PluginCard): CodexQuotaData {
 
 /* ------------------------------- xAI -------------------------------- */
 
+/** A raw payload the plugin cut short (`{"truncated": true}`) carries nothing usable. */
 const xaiConfig = (value: unknown): XaiBillingConfig | null =>
-  isRecord(value) ? (value as XaiBillingConfig) : null;
+  isRecord(value) && value.truncated !== true ? (value as XaiBillingConfig) : null;
 
 /** "XPremiumPlus" -> "X Premium+": the plugin has the raw tier id, the direct path has Grok's display name. */
 const humanizeXaiTier = (tier: string): string =>
@@ -359,25 +381,54 @@ const humanizeXaiTier = (tier: string): string =>
         .replace(/ Plus$/, '+')
         .replace(/^Super Grok/, 'SuperGrok');
 
-/** Weekly config rebuilt from the normalized block, for a card whose raw billing payload is absent. */
-const weeklyConfigFromNormalized = (n: Json): XaiBillingConfig | null => {
+/**
+ * Weekly billing config for the shared builder. Period (start / resets_at) and percent come
+ * from the plugin's normalized block, which already projects a rolled-over week at 0 %; the
+ * raw payload (as last received from xAI, so stale after a rollover) only supplies the extra
+ * billing fields (on-demand, prepaid, product usage). Without a raw payload the config is
+ * rebuilt from normalized alone.
+ */
+const xaiWeeklyConfig = (raw: XaiBillingConfig | null, n: Json): XaiBillingConfig | null => {
   const period = isRecord(n.period) ? n.period : null;
   const end = iso(period?.resets_at);
-  if (!end) return null;
-  const start = iso(period?.start) ?? undefined;
-  const onDemand = isRecord(n.on_demand) ? n.on_demand : null;
+  if (!raw && !end) return null;
   const cents = (value: unknown) => {
     const amount = num(value);
     return amount === null ? undefined : { val: amount };
   };
-  return {
-    currentPeriod: { type: 'USAGE_PERIOD_TYPE_WEEKLY', start, end },
-    billingPeriodStart: start,
-    billingPeriodEnd: end,
-    onDemandCap: cents(onDemand?.cap_cents),
-    onDemandUsed: cents(onDemand?.used_cents),
-    prepaidBalance: cents(n.prepaid_balance_cents),
-  };
+  const onDemand = isRecord(n.on_demand) ? n.on_demand : null;
+  const config: XaiBillingConfig = raw
+    ? { ...raw }
+    : {
+        onDemandCap: cents(onDemand?.cap_cents),
+        onDemandUsed: cents(onDemand?.used_cents),
+        prepaidBalance: cents(n.prepaid_balance_cents),
+      };
+  if (end) {
+    const start = iso(period?.start) ?? undefined;
+    const rawType = (raw?.currentPeriod ?? raw?.current_period)?.type;
+    config.currentPeriod = {
+      type:
+        period?.type === 'monthly'
+          ? 'USAGE_PERIOD_TYPE_MONTHLY'
+          : period?.type === 'weekly'
+            ? 'USAGE_PERIOD_TYPE_WEEKLY'
+            : (rawType ?? 'USAGE_PERIOD_TYPE_WEEKLY'),
+      start,
+      end,
+    };
+    config.current_period = undefined;
+    if (!raw) {
+      config.billingPeriodStart = start;
+      config.billingPeriodEnd = end;
+    }
+  }
+  // A null here is the plugin saying "not reported", not "keep the stale raw figure".
+  if ('usage_percent' in n) {
+    config.creditUsagePercent = num(n.usage_percent);
+    config.credit_usage_percent = undefined;
+  }
+  return config;
 };
 
 const count = (value: unknown): number => num(value) ?? 0;
@@ -426,7 +477,7 @@ function xaiRateLimit(value: unknown): XaiRateLimitHeadroom | null {
  */
 export function xaiCardToData(card: PluginCard): XaiBillingSummary | null {
   const n = card.normalized;
-  const weeklyConfig = xaiConfig(card.raw.billing_weekly) ?? weeklyConfigFromNormalized(n);
+  const weeklyConfig = xaiWeeklyConfig(xaiConfig(card.raw.billing_weekly), n);
   const summary = mergeXaiBillingSummaries(
     buildXaiBillingSummary(weeklyConfig),
     buildXaiBillingSummary(xaiConfig(card.raw.billing_monthly))

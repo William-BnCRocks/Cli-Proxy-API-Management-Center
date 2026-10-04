@@ -43,11 +43,13 @@ export function useQuotaBatchLoader() {
       // Claude/Codex/xAI are served by the account-pool cache when it exists: re-read it and ask the
       // plugin to re-poll these credentials (it throttles); never call upstream from here.
       const mode = useQuotaLiveStore.getState().source;
-      const pluginBacked = allTargets.filter((entry) => isPluginBackedType(entry.type));
+      const pluginBacked = allTargets.filter((entry) =>
+        isPluginBackedType(entry.type, entry.file.name)
+      );
       const targets =
         mode === 'direct'
           ? allTargets
-          : allTargets.filter((entry) => !isPluginBackedType(entry.type));
+          : allTargets.filter((entry) => !isPluginBackedType(entry.type, entry.file.name));
       if (mode === 'plugin' && pluginBacked.length > 0) {
         void syncPluginCards();
         void mapWithConcurrency(pluginBacked, LIVE_CONCURRENCY, ({ file }) =>

@@ -25,6 +25,7 @@ import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
+import { OpencodeGoSection } from './components/OpencodeGoSection';
 import { QuotaTimeline } from './components/QuotaTimeline';
 import {
   CARD_ENTRANCE_BUDGET_MS,
@@ -500,6 +501,9 @@ export function QuotaPage() {
             </Button>
           </div>
         )}
+
+        {/* OpenCode Go：插件提供 opencode-go 卡片时才出现，不属于凭证网格。 */}
+        <OpencodeGoSection />
 
         {/* 时间线只比较当前页凭证，避免大量凭证一次性生成无界泳道。 */}
         <QuotaTimeline

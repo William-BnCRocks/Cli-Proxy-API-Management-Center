@@ -38,7 +38,7 @@ export function useQuotaActions(disableControls: boolean) {
 
       // Claude/Codex/xAI: the account-pool plugin owns the upstream polling. Ask it to re-poll this
       // credential (it throttles) instead of calling Anthropic/ChatGPT/xAI from the browser.
-      if (isPluginBackedType(adapter.type)) {
+      if (isPluginBackedType(adapter.type, file.name)) {
         const mode = useQuotaLiveStore.getState().source;
         if (mode !== 'direct') {
           if (mode === 'unknown') return;
