@@ -4,10 +4,10 @@
  * percentage of an xAI allowance, and never replace a percent xAI reports.
  */
 
-import { beforeAll, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import i18n from '@/i18n';
+import { pinLanguage } from './helpers/i18nLanguage';
 import { XaiQuotaBody } from '@/features/quota/providers/xai/XaiQuotaBody';
 import { QUOTA_CLASS_KEYS, bindQuotaClasses } from '@/features/quota/types';
 import { buildXaiBillingSummary, mergeXaiBillingSummaries } from '@/utils/quota';
@@ -71,9 +71,7 @@ const quotaFor = (
 const render = (quota: XaiQuotaState): string =>
   renderToStaticMarkup(createElement(XaiQuotaBody, { quota, classes }));
 
-beforeAll(async () => {
-  await i18n.changeLanguage('en');
-});
+pinLanguage('en');
 
 describe('XaiQuotaBody measured usage', () => {
   test('percent unknown: weekly row keeps its reset, says not reported, shows the proxy numbers', () => {

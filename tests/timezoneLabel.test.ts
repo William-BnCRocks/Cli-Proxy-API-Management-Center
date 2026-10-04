@@ -60,12 +60,13 @@ describe('Asia/Shanghai hardcode', () => {
   });
 
   test('the expiry heading interpolates a timezone in all four locales', async () => {
+    const original = i18n.language;
     for (const locale of ['en', 'zh-CN', 'zh-TW', 'ru']) {
       await i18n.changeLanguage(locale);
       const label = i18n.t('codex_quota.reset_credits_expiry_label', { timezone: 'GMT+8' });
       expect(label).toContain('GMT+8');
       expect(label).not.toContain('{{');
     }
-    await i18n.changeLanguage('en');
+    await i18n.changeLanguage(original);
   });
 });
