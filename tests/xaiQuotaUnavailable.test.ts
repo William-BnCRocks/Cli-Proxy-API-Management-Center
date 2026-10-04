@@ -7,10 +7,10 @@
  * zero-limit/zero-used monthly row is hidden only while weekly data exists.
  */
 
-import { beforeAll, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import i18n from '@/i18n';
+import { pinLanguage } from './helpers/i18nLanguage';
 import { XaiQuotaBody } from '@/features/quota/providers/xai/XaiQuotaBody';
 import { QUOTA_CLASS_KEYS, bindQuotaClasses } from '@/features/quota/types';
 import {
@@ -65,9 +65,7 @@ const quotaFor = (
 const render = (quota: XaiQuotaState): string =>
   renderToStaticMarkup(createElement(XaiQuotaBody, { quota, classes }));
 
-beforeAll(async () => {
-  await i18n.changeLanguage('en');
-});
+pinLanguage('en');
 
 describe('resolveXaiSubscriptionPlan', () => {
   test('uses the settings display name and treats Heavy as the elite badge', () => {

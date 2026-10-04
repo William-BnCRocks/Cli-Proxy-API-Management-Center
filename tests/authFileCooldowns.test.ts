@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import i18n from '../src/i18n/index';
+import { pinLanguage } from './helpers/i18nLanguage';
 import { authFilesApi, normalizeAuthFilesResponse } from '../src/services/api/authFiles';
 import { normalizeAuthFileCooldowns } from '../src/services/api/authFileCooldowns';
 import { apiClient } from '../src/services/api/client';
@@ -12,6 +13,17 @@ import {
 } from '../src/features/authFiles/cooldowns';
 import { AuthFileCooldownSection } from '../src/features/authFiles/components/AuthFileCooldownSection';
 import type { AuthFileCooldownSnapshot, AuthFilesResponse } from '../src/types/authFile';
+
+// The markup assertions below are written for English (' is escaped in HTML, see escapeHtml).
+pinLanguage('en');
+
+const escapeHtml = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 
 const observedAt = '2026-07-17T10:00:00.000Z';
 const receivedAtMs = Date.now();
@@ -225,7 +237,7 @@ describe('cooldown section rendering', () => {
 
     const available = render(snapshot, { onReset: () => {} });
     expect(available).toContain(i18n.t('auth_files.cooldown_reset_button'));
-    expect(available).toContain(i18n.t('auth_files.cooldown_reset_hint'));
+    expect(available).toContain(escapeHtml(i18n.t('auth_files.cooldown_reset_hint')));
     expect(available).not.toContain('disabled=""');
 
     const pending = render(snapshot, { onReset: () => {}, resetting: true });

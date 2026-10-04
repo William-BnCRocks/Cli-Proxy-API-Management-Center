@@ -8,7 +8,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import i18n from '@/i18n';
+import { pinLanguage } from './helpers/i18nLanguage';
 import { OpencodeGoCard } from '@/features/quota/components/OpencodeGoCard';
 import {
   opencodeGoCardToData,
@@ -118,9 +118,7 @@ const cardFor = (...args: Parameters<typeof cardJson>) =>
 const render = (data: ReturnType<typeof opencodeGoCardToData>, extra = {}): string =>
   renderToStaticMarkup(createElement(OpencodeGoCard, { data, classes, ...extra }));
 
-beforeAll(async () => {
-  await i18n.changeLanguage('en');
-});
+pinLanguage('en');
 
 describe('opencode-go card parsing', () => {
   test('parses the plugin card, ignoring extra fields', () => {
