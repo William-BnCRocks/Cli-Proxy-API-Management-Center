@@ -6,10 +6,12 @@
 
 import { captureQuotaCacheGeneration, commitIfQuotaCacheCurrent } from '@/stores';
 import { currentLiveKey, useQuotaLiveStore } from './liveStore';
+import { opencodeGoCardToData, pickOpencodeGoCard, useOpencodeGoStore } from './opencodeGo';
 import {
   claudeCardToData,
   codexCardToData,
   fetchPluginCards,
+  notePluginOffCards,
   refreshPluginCard,
   xaiCardToData,
   type PluginCard,
@@ -35,11 +37,14 @@ function cardToData(type: 'claude' | 'codex' | 'xai', card: PluginCard): unknown
 export function commitPluginCards(response: PluginCardsResponse, nowMs: number = Date.now()): void {
   const generation = captureQuotaCacheGeneration();
   commitIfQuotaCacheCurrent(generation, () => {
+    notePluginOffCards(response.cards);
     for (const type of ['claude', 'codex', 'xai'] as const) {
       const adapter = QUOTA_ADAPTERS[type];
       const next: Record<string, QuotaCardState> = {};
       for (const card of response.cards) {
         if (card.provider !== type) continue;
+        // xai-poll is off: the plugin serves no data for it, so the direct path owns this credential.
+        if (type === 'xai' && card.kind === 'off') continue;
         if (card.dataAtMs === null) {
           next[card.name] = adapter.buildErrorState(emptyReason(card));
           continue;
@@ -59,6 +64,11 @@ export function commitPluginCards(response: PluginCardsResponse, nowMs: number =
       if (Object.keys(next).length === 0) continue;
       getQuotaSetter(adapter)((prev) => ({ ...prev, ...next }));
     }
+    // OpenCode Go is not an auth file: its card feeds its own section, and is hidden when absent.
+    const goCard = pickOpencodeGoCard(response.cards);
+    useOpencodeGoStore
+      .getState()
+      .set(goCard ? opencodeGoCardToData(goCard) : null, generation.cacheGeneration);
   });
 }
 
