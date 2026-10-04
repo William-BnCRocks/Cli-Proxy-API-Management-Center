@@ -1,9 +1,9 @@
 /**
- * claude-pool quota-card source.
+ * account-pool quota-card source.
  *
- * When the claude-pool plugin is present the browser stops asking Anthropic and
+ * When the account-pool plugin is present the browser stops asking Anthropic and
  * ChatGPT for quota: the plugin is the only poller and serves its cache from
- * memory at `GET /v0/management/plugins/claude-pool/quota/cards`. This module
+ * memory at `GET /v0/management/plugins/account-pool/quota/cards`. This module
  * parses that response (shape in the plugin's API.md) and converts each card
  * into the same `ClaudeQuotaData` / `CodexQuotaData` the direct api-call path
  * produces, so the card bodies render identically from either source.
@@ -27,10 +27,10 @@ import { formatInstantShort } from '@/utils/quota';
 import type { ClaudeQuotaData } from './providers/claude/data';
 import type { CodexQuotaData } from './providers/codex/data';
 
-export const PLUGIN_QUOTA_CARDS_PATH = '/v0/management/plugins/claude-pool/quota/cards';
-export const PLUGIN_QUOTA_REFRESH_PATH = '/v0/management/plugins/claude-pool/quota/refresh';
+export const PLUGIN_QUOTA_CARDS_PATH = '/v0/management/plugins/account-pool/quota/cards';
+export const PLUGIN_QUOTA_REFRESH_PATH = '/v0/management/plugins/account-pool/quota/refresh';
 
-/** Provider types whose numbers the claude-pool plugin caches (so the browser need not poll upstream). */
+/** Provider types whose numbers the account-pool plugin caches (so the browser need not poll upstream). */
 export const isPluginBackedType = (type: string): boolean => type === 'claude' || type === 'codex';
 
 type Json = Record<string, unknown>;

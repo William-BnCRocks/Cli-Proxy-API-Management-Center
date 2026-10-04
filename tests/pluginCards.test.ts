@@ -22,10 +22,10 @@ import {
 const T0 = 1_790_000_000;
 const DAY = 86400;
 
-// Shape of GET .../quota/cards (claude-pool), normalised block only, values rounded.
+// Shape of GET .../quota/cards (account-pool), normalised block only, values rounded.
 const response = {
   now: T0,
-  plugin: 'claude-pool',
+  plugin: 'account-pool',
   version: '0.3.0',
   force_gap_s: 60,
   cards: [
@@ -180,10 +180,10 @@ const response = {
   ],
 };
 
-describe('claude-pool quota cards', () => {
+describe('account-pool quota cards', () => {
   test('uses the v0 plugin routes', () => {
-    expect(PLUGIN_QUOTA_CARDS_PATH).toBe('/v0/management/plugins/claude-pool/quota/cards');
-    expect(PLUGIN_QUOTA_REFRESH_PATH).toBe('/v0/management/plugins/claude-pool/quota/refresh');
+    expect(PLUGIN_QUOTA_CARDS_PATH).toBe('/v0/management/plugins/account-pool/quota/cards');
+    expect(PLUGIN_QUOTA_REFRESH_PATH).toBe('/v0/management/plugins/account-pool/quota/refresh');
     expect(isPluginBackedType('claude') && isPluginBackedType('codex')).toBe(true);
     expect(isPluginBackedType('kimi')).toBe(false);
   });
@@ -349,7 +349,7 @@ describe('plugin probe', () => {
         expect((await fetchPluginCards())?.cards).toHaveLength(3);
       }
     );
-    expect(seen).toBe('http://argus.test:8317/v0/management/plugins/claude-pool/quota/cards');
+    expect(seen).toBe('http://argus.test:8317/v0/management/plugins/account-pool/quota/cards');
   });
 
   test('a missing route, an error or another shape means "no plugin" (null, never a throw)', async () => {

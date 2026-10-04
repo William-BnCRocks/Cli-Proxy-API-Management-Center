@@ -514,9 +514,9 @@
     "breakdown_hint": "此帳號 7 天用量依來源的占比",
     "pool_rank_label": "池內排名",
     "pool_rank_value": "第 {{rank}} / {{count}}",
-    "pool_rank_hint": "claude-pool 排名中的位置（第 1 = 下一個新工作階段使用）",
+    "pool_rank_hint": "account-pool 排名中的位置（第 1 = 下一個新工作階段使用）",
     "pool_next_label": "下一個新工作階段",
-    "pool_next_hint": "claude-pool 會把下一個新工作階段分配給此帳號",
+    "pool_next_hint": "account-pool 會把下一個新工作階段分配給此帳號",
     "pool_ineligible": "未參與輪替",
     "pace_tooltip": "計畫：此刻應已用 {{planned}}% · 實際：{{actual}}%",
     "pace_on_plan": "符合計畫",
@@ -1651,8 +1651,8 @@
     "live_paused_hint": "自動重新整理已暫停；點擊重新整理可更新此卡片",
     "live_polled": "{{ago}}前輪詢",
     "live_from_traffic": "{{ago}}前來自即時流量",
-    "live_plugin_hint": "資料來自 claude-pool 快取；瀏覽器不會直接請求 Anthropic 或 ChatGPT",
-    "live_refresh_requested": "已請求 claude-pool 重新輪詢 {{name}}",
+    "live_plugin_hint": "資料來自 account-pool 快取；瀏覽器不會直接請求 Anthropic 或 ChatGPT",
+    "live_refresh_requested": "已請求 account-pool 重新輪詢 {{name}}",
     "live_refresh_throttled": "剛剛重新整理過，請 {{wait}} 秒後再試"
   },
   "plugin_management": {

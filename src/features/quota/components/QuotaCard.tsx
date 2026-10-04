@@ -23,7 +23,7 @@ import { bindQuotaClasses } from '../types';
 import { QUOTA_ADAPTERS, type QuotaCardState } from '../providers';
 import { isQuotaRefreshDisabled, type QuotaFileEntry } from '../logic';
 import { useClaudeResetGrants } from '../providers/claude/ClaudeResetGrants';
-import type { ClaudePoolInfo } from '../claudePool';
+import type { AccountPoolInfo } from '../accountPool';
 import { currentLiveKey } from '../liveStore';
 import { QuotaLiveStatus } from './QuotaLiveStatus';
 import bodyStyles from './QuotaBody.module.scss';
@@ -40,8 +40,8 @@ export type QuotaCardProps = {
   resetting: boolean;
   /** 首屏级联入场延迟；null = 不入场（切 tab / 翻页 / 刷新新挂载的卡片）。 */
   entranceDelayMs?: number | null;
-  /** Optional claude-pool data for this credential (Claude cards only). */
-  claudePool?: ClaudePoolInfo | null;
+  /** Optional account-pool data for this credential (Claude cards only). */
+  accountPool?: AccountPoolInfo | null;
   onRefresh: () => void;
   onReset: () => void;
 };
@@ -54,7 +54,7 @@ export function QuotaCard(props: QuotaCardProps) {
     canRefresh,
     resetting,
     entranceDelayMs,
-    claudePool,
+    accountPool,
     onRefresh,
     onReset,
   } = props;
@@ -154,7 +154,7 @@ export function QuotaCard(props: QuotaCardProps) {
             {t(`${adapter.i18nPrefix}.load_failed`, { message: errorMessage })}
           </div>
         ) : quota ? (
-          <adapter.Body quota={quota} classes={quotaClasses} claudePool={claudePool} />
+          <adapter.Body quota={quota} classes={quotaClasses} accountPool={accountPool} />
         ) : (
           <div className={styles.idleHint}>{t(`${adapter.i18nPrefix}.idle`)}</div>
         )}

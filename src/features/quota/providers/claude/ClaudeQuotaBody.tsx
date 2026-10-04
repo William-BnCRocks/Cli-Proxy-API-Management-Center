@@ -16,7 +16,7 @@ import type { QuotaBodyProps, QuotaClassMap } from '../../types';
 import { formatMoney, resolveClaudeCredit } from './account';
 import styles from './ClaudeQuotaBody.module.scss';
 
-/** The 7-day account window is the one the claude-pool plan applies to. */
+/** The 7-day account window is the one the account-pool plan applies to. */
 const PACE_WINDOW_ID = 'seven-day';
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
@@ -28,7 +28,7 @@ const getPlanValueClass = (planType: string | null, classes: QuotaClassMap): str
   return classes.codexPlanValue;
 };
 
-export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<ClaudeQuotaState>) {
+export function ClaudeQuotaBody({ quota, classes, accountPool }: QuotaBodyProps<ClaudeQuotaState>) {
   const { t, i18n } = useTranslation();
   const now = useNow();
   const locale = i18n.resolvedLanguage;
@@ -136,7 +136,7 @@ export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<C
     subscriptionStatus ||
     creditValue ||
     resetsLeft !== null ||
-    claudePool?.rank;
+    accountPool?.rank;
 
   return (
     <>
@@ -189,30 +189,30 @@ export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<C
               <span className={classes.codexPlanValue}>{resetsLeft}</span>
             </span>
           )}
-          {claudePool?.rank != null && (
+          {accountPool?.rank != null && (
             <span className={classes.codexPlanItem} title={t('claude_quota.pool_rank_hint')}>
               <span className={classes.codexPlanLabel}>{t('claude_quota.pool_rank_label')}</span>
               <span className={classes.codexPlanValue}>
                 {t('claude_quota.pool_rank_value', {
-                  rank: claudePool.rank,
-                  count: claudePool.rankedCount,
+                  rank: accountPool.rank,
+                  count: accountPool.rankedCount,
                 })}
               </span>
             </span>
           )}
         </div>
       )}
-      {claudePool && (claudePool.isNext || !claudePool.eligible) && (
+      {accountPool && (accountPool.isNext || !accountPool.eligible) && (
         <div className={styles.badges}>
-          {claudePool.isNext && (
+          {accountPool.isNext && (
             <span className={styles.nextBadge} title={t('claude_quota.pool_next_hint')}>
               {t('claude_quota.pool_next_label')}
             </span>
           )}
-          {!claudePool.eligible && (
+          {!accountPool.eligible && (
             <span
               className={styles.mutedBadge}
-              title={claudePool.reason ?? claudePool.kind ?? undefined}
+              title={accountPool.reason ?? accountPool.kind ?? undefined}
             >
               {t('claude_quota.pool_ineligible')}
             </span>
@@ -267,11 +267,11 @@ export function ClaudeQuotaBody({ quota, classes, claudePool }: QuotaBodyProps<C
             let markerLabel: string | undefined;
             if (
               window.id === PACE_WINDOW_ID &&
-              claudePool?.plannedUsedPercent != null &&
-              claudePool.actualUsedPercent != null
+              accountPool?.plannedUsedPercent != null &&
+              accountPool.actualUsedPercent != null
             ) {
-              const planned = clampPercent(claudePool.plannedUsedPercent);
-              const actual = clampPercent(claudePool.actualUsedPercent);
+              const planned = clampPercent(accountPool.plannedUsedPercent);
+              const actual = clampPercent(accountPool.actualUsedPercent);
               marker = 100 - planned;
               const points = Math.round(Math.abs(actual - planned));
               markerLabel = t('claude_quota.pace_tooltip', {

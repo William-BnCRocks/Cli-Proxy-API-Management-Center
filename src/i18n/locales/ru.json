@@ -519,9 +519,9 @@
     "breakdown_hint": "Доля 7-дневного использования аккаунта по источникам",
     "pool_rank_label": "Место в пуле",
     "pool_rank_value": "№{{rank}} / {{count}}",
-    "pool_rank_hint": "Позиция в рейтинге claude-pool (1 = для следующей новой сессии)",
+    "pool_rank_hint": "Позиция в рейтинге account-pool (1 = для следующей новой сессии)",
     "pool_next_label": "Следующая новая сессия",
-    "pool_next_hint": "claude-pool направит следующую новую сессию на этот аккаунт",
+    "pool_next_hint": "account-pool направит следующую новую сессию на этот аккаунт",
     "pool_ineligible": "Не в ротации",
     "pace_tooltip": "План: к этому моменту {{planned}}% · факт: {{actual}}%",
     "pace_on_plan": "По плану",
@@ -1630,8 +1630,8 @@
     "live_paused_hint": "Автообновление на паузе; нажмите «Обновить», чтобы обновить карточку",
     "live_polled": "опрошено {{ago}} назад",
     "live_from_traffic": "из живого трафика {{ago}} назад",
-    "live_plugin_hint": "Данные из кэша claude-pool; браузер не обращается к Anthropic или ChatGPT",
-    "live_refresh_requested": "claude-pool попросили обновить {{name}}",
+    "live_plugin_hint": "Данные из кэша account-pool; браузер не обращается к Anthropic или ChatGPT",
+    "live_refresh_requested": "account-pool попросили обновить {{name}}",
     "live_refresh_throttled": "Недавно обновлено, повторите через {{wait}} с"
   },
   "plugin_management": {

@@ -256,13 +256,13 @@ describe('Claude card body', () => {
     expect(markup).not.toMatch(/>d+%</);
   });
 
-  test('adds pool badges and the pace marker only when claude-pool data is present', () => {
+  test('adds pool badges and the pace marker only when account-pool data is present', () => {
     const without = render({ quota, classes });
     expect(without).not.toContain('Next new session');
     expect(without).not.toContain('Pool rank');
     expect(without).not.toContain('over plan');
 
-    const claudePool = {
+    const accountPool = {
       rank: 2,
       rankedCount: 4,
       isNext: true,
@@ -272,7 +272,7 @@ describe('Claude card body', () => {
       plannedUsedPercent: 8,
       actualUsedPercent: 58,
     };
-    const withPool = render({ quota, classes, claudePool });
+    const withPool = render({ quota, classes, accountPool });
     expect(withPool).toContain('#2 / 4');
     expect(withPool).toContain('Next new session');
     expect(withPool).toContain('50 pp over plan');

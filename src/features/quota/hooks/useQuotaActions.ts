@@ -36,7 +36,7 @@ export function useQuotaActions(disableControls: boolean) {
       if (resettingQuotaName === cacheKey) return;
       if (getQuotaState(adapter, file)?.status === 'loading') return;
 
-      // Claude/Codex: the claude-pool plugin owns the upstream polling. Ask it to re-poll this
+      // Claude/Codex: the account-pool plugin owns the upstream polling. Ask it to re-poll this
       // credential (it throttles) instead of calling Anthropic/ChatGPT from the browser.
       if (isPluginBackedType(adapter.type)) {
         const mode = useQuotaLiveStore.getState().source;

@@ -514,9 +514,9 @@
     "breakdown_hint": "此账号 7 天用量按来源的占比",
     "pool_rank_label": "池内排名",
     "pool_rank_value": "第 {{rank}} / {{count}}",
-    "pool_rank_hint": "claude-pool 排名中的位置（第 1 = 下一个新会话使用）",
+    "pool_rank_hint": "account-pool 排名中的位置（第 1 = 下一个新会话使用）",
     "pool_next_label": "下一个新会话",
-    "pool_next_hint": "claude-pool 会把下一个新会话分配给此账号",
+    "pool_next_hint": "account-pool 会把下一个新会话分配给此账号",
     "pool_ineligible": "未参与轮转",
     "pace_tooltip": "计划：此刻应已用 {{planned}}% · 实际：{{actual}}%",
     "pace_on_plan": "符合计划",
@@ -1625,8 +1625,8 @@
     "live_paused_hint": "自动刷新已暂停；点击刷新可更新此卡片",
     "live_polled": "{{ago}}前轮询",
     "live_from_traffic": "{{ago}}前来自实时流量",
-    "live_plugin_hint": "数据来自 claude-pool 缓存；浏览器不会直接请求 Anthropic 或 ChatGPT",
-    "live_refresh_requested": "已请求 claude-pool 重新轮询 {{name}}",
+    "live_plugin_hint": "数据来自 account-pool 缓存；浏览器不会直接请求 Anthropic 或 ChatGPT",
+    "live_refresh_requested": "已请求 account-pool 重新轮询 {{name}}",
     "live_refresh_throttled": "刚刚刷新过，请 {{wait}} 秒后再试"
   },
   "plugin_management": {

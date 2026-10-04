@@ -1,5 +1,5 @@
 /**
- * Glue between the claude-pool card cache and the quota store: commit a cards
+ * Glue between the account-pool card cache and the quota store: commit a cards
  * response into the Claude/Codex quota maps, and run the plugin-side refresh.
  * No upstream (Anthropic/ChatGPT) request is ever made from here.
  */
@@ -17,7 +17,7 @@ import {
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
 
 /** Marker message; the card shows it as a normal load failure until the first poll lands. */
-const AWAITING_POLL = 'claude-pool has not read this credential yet';
+const AWAITING_POLL = 'account-pool has not read this credential yet';
 
 /** Cards that exist but have never been read have nothing to show yet. */
 const emptyReason = (card: PluginCard): string =>

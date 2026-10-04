@@ -516,9 +516,9 @@
     "breakdown_hint": "Share of this account’s 7-day usage by surface",
     "pool_rank_label": "Pool rank",
     "pool_rank_value": "#{{rank}} / {{count}}",
-    "pool_rank_hint": "Position in the claude-pool ranking (1 = used for the next new session)",
+    "pool_rank_hint": "Position in the account-pool ranking (1 = used for the next new session)",
     "pool_next_label": "Next new session",
-    "pool_next_hint": "claude-pool will route the next new session to this account",
+    "pool_next_hint": "account-pool will route the next new session to this account",
     "pool_ineligible": "Not in rotation",
     "pace_tooltip": "Plan: {{planned}}% used by now · actual: {{actual}}%",
     "pace_on_plan": "On plan",
@@ -1627,8 +1627,8 @@
     "live_paused_hint": "Auto-refresh is paused; use Refresh to update this card",
     "live_polled": "polled {{ago}} ago",
     "live_from_traffic": "live from traffic {{ago}} ago",
-    "live_plugin_hint": "Served from the claude-pool cache; the browser does not call Anthropic or ChatGPT",
-    "live_refresh_requested": "Asked claude-pool to re-poll {{name}}",
+    "live_plugin_hint": "Served from the account-pool cache; the browser does not call Anthropic or ChatGPT",
+    "live_refresh_requested": "Asked account-pool to re-poll {{name}}",
     "live_refresh_throttled": "Refreshed recently, try in {{wait}}s"
   },
   "plugin_management": {

@@ -9,7 +9,7 @@
 
 /**
  * Where a card's numbers come from.
- * - plugin: the claude-pool plugin's cache (no upstream call from the browser), so a short interval is free.
+ * - plugin: the account-pool plugin's cache (no upstream call from the browser), so a short interval is free.
  * - direct: the browser asks Anthropic / ChatGPT / ... through api-call, so the default is gentler.
  */
 export type QuotaSourceMode = 'plugin' | 'direct';
