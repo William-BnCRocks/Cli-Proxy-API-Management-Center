@@ -1,7 +1,7 @@
 /**
- * Glue between the claude-pool card cache and the quota store: commit a cards
- * response into the Claude/Codex quota maps, and run the plugin-side refresh.
- * No upstream (Anthropic/ChatGPT) request is ever made from here.
+ * Glue between the account-pool card cache and the quota store: commit a cards
+ * response into the Claude/Codex/xAI quota maps, and run the plugin-side refresh.
+ * No upstream (Anthropic/ChatGPT/xAI) request is ever made from here.
  */
 
 import { captureQuotaCacheGeneration, commitIfQuotaCacheCurrent } from '@/stores';
@@ -11,22 +11,31 @@ import {
   codexCardToData,
   fetchPluginCards,
   refreshPluginCard,
+  xaiCardToData,
   type PluginCard,
   type PluginCardsResponse,
 } from './pluginCards';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
 
 /** Marker message; the card shows it as a normal load failure until the first poll lands. */
-const AWAITING_POLL = 'claude-pool has not read this credential yet';
+const AWAITING_POLL = 'account-pool has not read this credential yet';
 
 /** Cards that exist but have never been read have nothing to show yet. */
 const emptyReason = (card: PluginCard): string =>
   card.lastError ?? (card.kind ? `no data yet (${card.kind})` : 'no data yet');
 
+/** The card as its provider's quota data; null when there is nothing to show yet. */
+function cardToData(type: 'claude' | 'codex' | 'xai', card: PluginCard): unknown {
+  if (type === 'xai') return xaiCardToData(card);
+  const data = type === 'claude' ? claudeCardToData(card) : codexCardToData(card);
+  if (data.windows.length === 0 && !('budgets' in data && data.budgets?.length)) return null;
+  return data;
+}
+
 export function commitPluginCards(response: PluginCardsResponse, nowMs: number = Date.now()): void {
   const generation = captureQuotaCacheGeneration();
   commitIfQuotaCacheCurrent(generation, () => {
-    for (const type of ['claude', 'codex'] as const) {
+    for (const type of ['claude', 'codex', 'xai'] as const) {
       const adapter = QUOTA_ADAPTERS[type];
       const next: Record<string, QuotaCardState> = {};
       for (const card of response.cards) {
@@ -35,9 +44,9 @@ export function commitPluginCards(response: PluginCardsResponse, nowMs: number =
           next[card.name] = adapter.buildErrorState(emptyReason(card));
           continue;
         }
-        const data = type === 'claude' ? claudeCardToData(card) : codexCardToData(card);
+        const data = cardToData(type, card);
         // Passive header updates can create a card before the plugin has ever read the usage body.
-        if (data.windows.length === 0 && !('budgets' in data && data.budgets?.length)) {
+        if (data === null) {
           next[card.name] = adapter.buildErrorState(AWAITING_POLL);
           continue;
         }

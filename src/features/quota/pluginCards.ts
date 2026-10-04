@@ -1,12 +1,13 @@
 /**
- * claude-pool quota-card source.
+ * account-pool quota-card source.
  *
- * When the claude-pool plugin is present the browser stops asking Anthropic and
+ * When the account-pool plugin is present the browser stops asking Anthropic and
  * ChatGPT for quota: the plugin is the only poller and serves its cache from
- * memory at `GET /v0/management/plugins/claude-pool/quota/cards`. This module
+ * memory at `GET /v0/management/plugins/account-pool/quota/cards`. This module
  * parses that response (shape in the plugin's API.md) and converts each card
- * into the same `ClaudeQuotaData` / `CodexQuotaData` the direct api-call path
- * produces, so the card bodies render identically from either source.
+ * into the same `ClaudeQuotaData` / `CodexQuotaData` / `XaiBillingSummary` the
+ * direct api-call path produces, so the card bodies render identically from
+ * either source.
  *
  * React-free; tests/pluginCards.test.ts consumes it directly.
  */
@@ -21,17 +22,33 @@ import type {
   ClaudeSubscriptionInfo,
   CodexQuotaWindow,
   CodexRateLimitResetCredit,
+  XaiBillingConfig,
+  XaiBillingSummary,
+  XaiMeasuredUsage,
+  XaiRateLimitHeadroom,
 } from '@/types';
 import type { AnthropicResetGrantStatus } from '@/services/api/claudeResetGrants';
-import { formatInstantShort } from '@/utils/quota';
+import {
+  buildXaiBillingSummary,
+  formatInstantShort,
+  getStatusFromError,
+  mergeXaiBillingSummaries,
+  resolveXaiSubscriptionPlan,
+} from '@/utils/quota';
+import { currentPoolBase, isLegacyPoolBase, poolGet } from './accountPool';
 import type { ClaudeQuotaData } from './providers/claude/data';
 import type { CodexQuotaData } from './providers/codex/data';
 
-export const PLUGIN_QUOTA_CARDS_PATH = '/v0/management/plugins/claude-pool/quota/cards';
-export const PLUGIN_QUOTA_REFRESH_PATH = '/v0/management/plugins/claude-pool/quota/refresh';
+export const PLUGIN_QUOTA_CARDS_PATH = '/v0/management/plugins/account-pool/quota/cards';
+export const PLUGIN_QUOTA_REFRESH_PATH = '/v0/management/plugins/account-pool/quota/refresh';
 
-/** Provider types whose numbers the claude-pool plugin caches (so the browser need not poll upstream). */
-export const isPluginBackedType = (type: string): boolean => type === 'claude' || type === 'codex';
+/**
+ * Provider types whose numbers the account-pool plugin caches (so the browser need not
+ * poll upstream). The legacy claude-pool plugin only ever served Claude and Codex, so
+ * xAI stays on the direct path while only the legacy routes answer.
+ */
+export const isPluginBackedType = (type: string): boolean =>
+  type === 'claude' || type === 'codex' || (type === 'xai' && !isLegacyPoolBase());
 
 type Json = Record<string, unknown>;
 
@@ -53,7 +70,7 @@ const iso = (value: unknown): string | null => {
 };
 
 export interface PluginCard {
-  provider: 'claude' | 'codex';
+  provider: 'claude' | 'codex' | 'xai';
   name: string;
   /** `poll` (the plugin asked upstream) or `passive` (read from real traffic's response headers). */
   source: string;
@@ -66,6 +83,8 @@ export interface PluginCard {
   lastError: string | null;
   kind: string | null;
   normalized: Json;
+  /** Upstream payloads as the plugin received them (xAI: billing_weekly, billing_monthly, user). */
+  raw: Json;
 }
 
 export interface PluginCardsResponse {
@@ -80,7 +99,10 @@ export function parsePluginCards(raw: unknown): PluginCardsResponse | null {
   for (const item of raw.cards) {
     if (!isRecord(item)) continue;
     const name = str(item.name);
-    const provider = item.provider === 'claude' || item.provider === 'codex' ? item.provider : null;
+    const provider =
+      item.provider === 'claude' || item.provider === 'codex' || item.provider === 'xai'
+        ? item.provider
+        : null;
     if (!name || !provider) continue;
     const error = isRecord(item.last_error) ? str(item.last_error.msg) : null;
     cards.push({
@@ -94,6 +116,7 @@ export function parsePluginCards(raw: unknown): PluginCardsResponse | null {
       lastError: error,
       kind: str(item.kind),
       normalized: isRecord(item.normalized) ? item.normalized : {},
+      raw: isRecord(item.raw) ? item.raw : {},
     });
   }
   return { nowMs: ms(raw.now), forceGapS: num(raw.force_gap_s), cards };
@@ -321,6 +344,105 @@ export function codexCardToData(card: PluginCard): CodexQuotaData {
   };
 }
 
+/* ------------------------------- xAI -------------------------------- */
+
+const xaiConfig = (value: unknown): XaiBillingConfig | null =>
+  isRecord(value) ? (value as XaiBillingConfig) : null;
+
+/** "XPremiumPlus" -> "X Premium+": the plugin has the raw tier id, the direct path has Grok's display name. */
+const humanizeXaiTier = (tier: string): string =>
+  /\s/.test(tier)
+    ? tier
+    : tier
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/ Plus$/, '+')
+        .replace(/^Super Grok/, 'SuperGrok');
+
+/** Weekly config rebuilt from the normalized block, for a card whose raw billing payload is absent. */
+const weeklyConfigFromNormalized = (n: Json): XaiBillingConfig | null => {
+  const period = isRecord(n.period) ? n.period : null;
+  const end = iso(period?.resets_at);
+  if (!end) return null;
+  const start = iso(period?.start) ?? undefined;
+  const onDemand = isRecord(n.on_demand) ? n.on_demand : null;
+  const cents = (value: unknown) => {
+    const amount = num(value);
+    return amount === null ? undefined : { val: amount };
+  };
+  return {
+    currentPeriod: { type: 'USAGE_PERIOD_TYPE_WEEKLY', start, end },
+    billingPeriodStart: start,
+    billingPeriodEnd: end,
+    onDemandCap: cents(onDemand?.cap_cents),
+    onDemandUsed: cents(onDemand?.used_cents),
+    prepaidBalance: cents(n.prepaid_balance_cents),
+  };
+};
+
+const count = (value: unknown): number => num(value) ?? 0;
+
+function xaiMeasured(value: unknown): XaiMeasuredUsage | null {
+  if (!isRecord(value)) return null;
+  if (num(value.requests) === null && num(value.total_tokens) === null) return null;
+  return {
+    sinceMs: ms(value.since),
+    requests: count(value.requests),
+    failed: count(value.failed),
+    rateLimited: count(value.rate_limited),
+    inputTokens: count(value.input_tokens),
+    outputTokens: count(value.output_tokens),
+    reasoningTokens: count(value.reasoning_tokens),
+    cacheReadTokens: count(value.cache_read_tokens),
+    cacheWriteTokens: count(value.cache_write_tokens),
+    totalTokens: count(value.total_tokens),
+    lastRequestAtMs: ms(value.last_request_at),
+  };
+}
+
+function xaiRateLimit(value: unknown): XaiRateLimitHeadroom | null {
+  if (!isRecord(value)) return null;
+  const headroom = {
+    limitRequests: num(value.limit_requests),
+    remainingRequests: num(value.remaining_requests),
+    limitTokens: num(value.limit_tokens),
+    remainingTokens: num(value.remaining_tokens),
+    atMs: ms(value.at),
+  };
+  const known = [
+    headroom.limitRequests,
+    headroom.remainingRequests,
+    headroom.limitTokens,
+    headroom.remainingTokens,
+  ];
+  return known.every((item) => item === null) ? null : headroom;
+}
+
+/**
+ * The plugin's xAI card as the summary the direct path builds. The billing payloads go
+ * through the same builders (so plan limits, on-demand, prepaid and the monthly row
+ * behave identically); the plugin's own measurement rides along. Null when the card
+ * carries no billing period at all.
+ */
+export function xaiCardToData(card: PluginCard): XaiBillingSummary | null {
+  const n = card.normalized;
+  const weeklyConfig = xaiConfig(card.raw.billing_weekly) ?? weeklyConfigFromNormalized(n);
+  const summary = mergeXaiBillingSummaries(
+    buildXaiBillingSummary(weeklyConfig),
+    buildXaiBillingSummary(xaiConfig(card.raw.billing_monthly))
+  );
+  if (!summary) return null;
+  const user = isRecord(card.raw.user) ? card.raw.user : null;
+  const tier = str(n.plan) ?? str(user?.subscriptionTier) ?? str(user?.subscription_tier);
+  const plan = tier ? resolveXaiSubscriptionPlan(tier, humanizeXaiTier(tier)) : null;
+  return {
+    ...summary,
+    ...(plan ? { planLabel: plan.label, planTier: plan.tier } : {}),
+    measured: xaiMeasured(n.measured),
+    rateLimit: xaiRateLimit(n.rate_limit),
+  };
+}
+
 /* ------------------------------ network ----------------------------- */
 
 /** Null on any failure (absent plugin, missing route, older plugin): the caller falls back to direct mode. */
@@ -328,7 +450,7 @@ export async function fetchPluginCards(): Promise<PluginCardsResponse | null> {
   const origin = apiClient.getServerOrigin();
   if (!origin) return null;
   try {
-    return parsePluginCards(await apiClient.get(`${origin}${PLUGIN_QUOTA_CARDS_PATH}`));
+    return parsePluginCards(await poolGet(origin, '/quota/cards'));
   } catch {
     return null;
   }
@@ -341,13 +463,12 @@ export async function refreshPluginCard(name: string): Promise<PluginRefreshResu
   const origin = apiClient.getServerOrigin();
   if (!origin) return { ok: false, throttled: false };
   try {
-    await apiClient.post(`${origin}${PLUGIN_QUOTA_REFRESH_PATH}?name=${encodeURIComponent(name)}`);
+    await apiClient.post(
+      `${origin}${currentPoolBase()}/quota/refresh?name=${encodeURIComponent(name)}`
+    );
     return { ok: true };
   } catch (err) {
-    const status =
-      typeof err === 'object' && err !== null && 'status' in err
-        ? Number((err as { status?: unknown }).status)
-        : undefined;
+    const status = getStatusFromError(err);
     return { ok: false, throttled: status === 429, status };
   }
 }

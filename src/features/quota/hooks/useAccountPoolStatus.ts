@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/services/api/client';
-import { fetchClaudePoolStatus, type ClaudePoolStatus } from '../claudePool';
+import { fetchAccountPoolStatus, type AccountPoolStatus } from '../accountPool';
 
 /**
- * Optional claude-pool status. Polled at the page's live cadence (it is a local
+ * Optional account-pool status. Polled at the page's live cadence (it is a local
  * plugin call, not an upstream one) and abandoned for the visit after the first
  * failure so an absent plugin costs one request, not one per minute.
  */
-export function useClaudePoolStatus(active: boolean, intervalMs: number): ClaudePoolStatus | null {
-  const [status, setStatus] = useState<ClaudePoolStatus | null>(null);
+export function useAccountPoolStatus(active: boolean, intervalMs: number): AccountPoolStatus | null {
+  const [status, setStatus] = useState<AccountPoolStatus | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -20,7 +20,7 @@ export function useClaudePoolStatus(active: boolean, intervalMs: number): Claude
         schedule();
         return;
       }
-      const next = await fetchClaudePoolStatus();
+      const next = await fetchAccountPoolStatus();
       if (cancelled || revision !== apiClient.getConnectionRevision()) return;
       setStatus(next);
       if (next) schedule();

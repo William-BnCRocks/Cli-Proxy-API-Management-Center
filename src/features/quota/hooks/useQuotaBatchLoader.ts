@@ -40,7 +40,7 @@ export function useQuotaBatchLoader() {
 
   const loadQuota = useCallback(
     async (allTargets: QuotaFileEntry[]) => {
-      // Claude/Codex are served by the claude-pool cache when it exists: re-read it and ask the
+      // Claude/Codex/xAI are served by the account-pool cache when it exists: re-read it and ask the
       // plugin to re-poll these credentials (it throttles); never call upstream from here.
       const mode = useQuotaLiveStore.getState().source;
       const pluginBacked = allTargets.filter((entry) => isPluginBackedType(entry.type));

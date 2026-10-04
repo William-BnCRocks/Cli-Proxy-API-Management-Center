@@ -1,6 +1,6 @@
 /**
  * Live-refresh state shared by the quota page, the cards and the manual-refresh
- * paths: the data source (claude-pool plugin cache vs direct api-call), the
+ * paths: the data source (account-pool plugin cache vs direct api-call), the
  * chosen interval for each source, and one `LiveSchedule` per credential.
  *
  * Keys carry the quota cache generation, so a reconnect (which bumps it) starts
@@ -66,8 +66,8 @@ const rescheduled = (schedules: Record<string, LiveSchedule>, intervalMs: number
 
 interface QuotaLiveState {
   /**
-   * `unknown` until the claude-pool probe answers; Claude and Codex are not
-   * fetched before that, so a page open never touches Anthropic/ChatGPT by accident.
+   * `unknown` until the account-pool probe answers; Claude, Codex and xAI are not
+   * fetched before that, so a page open never touches Anthropic/ChatGPT/xAI by accident.
    */
   source: QuotaSourceMode | 'unknown';
   /** Effective interval for the current source. */

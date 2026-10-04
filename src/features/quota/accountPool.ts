@@ -1,21 +1,72 @@
 /**
- * Optional integration with the `claude-pool` CPA plugin.
+ * Optional integration with the `account-pool` CPA plugin.
  *
- * The plugin serves `GET /v0/management/plugins/claude-pool/status` (note v0:
+ * The plugin serves `GET /v0/management/plugins/account-pool/status` (note v0:
  * plugin routes keep their backend-declared path). When that call succeeds, the
  * Claude cards show the account's rank, a "next new session" badge and a pace
  * marker on the 7-day bar. When it fails for any reason (plugin absent,
  * disabled, older shape) the panel behaves exactly as without it.
  *
- * Shapes only; React-free so tests/claudePool.test.ts can consume it.
+ * Shapes only; React-free so tests/accountPool.test.ts can consume it.
  */
 
 import { apiClient } from '@/services/api/client';
 import type { AuthFileItem } from '@/types';
+import { getStatusFromError } from '@/utils/quota';
 
-export const CLAUDE_POOL_STATUS_PATH = '/v0/management/plugins/claude-pool/status';
+export const ACCOUNT_POOL_BASE = '/v0/management/plugins/account-pool';
+export const ACCOUNT_POOL_STATUS_PATH = `${ACCOUNT_POOL_BASE}/status`;
 
-export interface ClaudePoolAccount {
+/**
+ * TEMPORARY (one release): the plugin used to be called `claude-pool`. A panel
+ * that is upgraded before the plugin finds the old routes only there, so a 404
+ * from the account-pool route is retried once on the legacy base and the base
+ * that answered is used from then on. Delete this block, `poolGet`,
+ * `currentPoolBase` and `isLegacyPoolBase` once every plugin runs as `account-pool`.
+ */
+export const LEGACY_CLAUDE_POOL_BASE = '/v0/management/plugins/claude-pool';
+
+let resolvedBase: string | null = null;
+
+/** Base the plugin answered on; account-pool until a probe has said otherwise. */
+export const currentPoolBase = (): string => resolvedBase ?? ACCOUNT_POOL_BASE;
+
+/** True while only the legacy claude-pool routes answer (that plugin serves no xAI cards). */
+export const isLegacyPoolBase = (): boolean => resolvedBase === LEGACY_CLAUDE_POOL_BASE;
+
+/** Forget the resolved base (tests; the next call probes again). */
+export const resetPoolBase = (): void => {
+  resolvedBase = null;
+};
+
+/**
+ * GET a plugin route (`suffix` starts with `/`). Uses the resolved base; with none
+ * resolved yet it tries account-pool and, on a 404 only, the legacy base once. A 404
+ * on a resolved base clears it, so a plugin upgraded mid-visit is found again.
+ */
+export async function poolGet(origin: string, suffix: string): Promise<unknown> {
+  const read = (base: string) => apiClient.get(`${origin}${base}${suffix}`);
+  if (resolvedBase) {
+    try {
+      return await read(resolvedBase);
+    } catch (err) {
+      if (getStatusFromError(err) === 404) resolvedBase = null;
+      throw err;
+    }
+  }
+  try {
+    const answer = await read(ACCOUNT_POOL_BASE);
+    resolvedBase = ACCOUNT_POOL_BASE;
+    return answer;
+  } catch (err) {
+    if (getStatusFromError(err) !== 404) throw err;
+  }
+  const answer = await read(LEGACY_CLAUDE_POOL_BASE);
+  resolvedBase = LEGACY_CLAUDE_POOL_BASE;
+  return answer;
+}
+
+export interface AccountPoolAccount {
   name: string;
   email: string | null;
   disabled: boolean;
@@ -30,14 +81,14 @@ export interface ClaudePoolAccount {
   sevenPlan: number | null;
 }
 
-export interface ClaudePoolStatus {
+export interface AccountPoolStatus {
   version: string | null;
-  accounts: ClaudePoolAccount[];
+  accounts: AccountPoolAccount[];
   nextSessionName: string | null;
 }
 
 /** What one card needs. */
-export interface ClaudePoolInfo {
+export interface AccountPoolInfo {
   rank: number | null;
   /** Ranked accounts in the pool (denominator for "#2 of 4"). */
   rankedCount: number;
@@ -60,9 +111,9 @@ const num = (value: unknown): number | null =>
 const str = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() ? value : null;
 
-export function parseClaudePoolStatus(raw: unknown): ClaudePoolStatus | null {
+export function parseAccountPoolStatus(raw: unknown): AccountPoolStatus | null {
   if (!isRecord(raw) || !Array.isArray(raw.accounts)) return null;
-  const accounts: ClaudePoolAccount[] = [];
+  const accounts: AccountPoolAccount[] = [];
   for (const item of raw.accounts) {
     if (!isRecord(item)) continue;
     const name = str(item.name);
@@ -85,10 +136,10 @@ export function parseClaudePoolStatus(raw: unknown): ClaudePoolStatus | null {
 }
 
 /** Match by credential file name; fall back to a unique e-mail match. */
-export function resolveClaudePoolInfo(
-  status: ClaudePoolStatus | null,
+export function resolveAccountPoolInfo(
+  status: AccountPoolStatus | null,
   file: Pick<AuthFileItem, 'name' | 'email'>
-): ClaudePoolInfo | null {
+): AccountPoolInfo | null {
   if (!status) return null;
   let account = status.accounts.find((candidate) => candidate.name === file.name);
   if (!account && typeof file.email === 'string' && file.email) {
@@ -110,11 +161,11 @@ export function resolveClaudePoolInfo(
 }
 
 /** Null on any failure: the integration is strictly optional. */
-export async function fetchClaudePoolStatus(): Promise<ClaudePoolStatus | null> {
+export async function fetchAccountPoolStatus(): Promise<AccountPoolStatus | null> {
   const origin = apiClient.getServerOrigin();
   if (!origin) return null;
   try {
-    return parseClaudePoolStatus(await apiClient.get(`${origin}${CLAUDE_POOL_STATUS_PATH}`));
+    return parseAccountPoolStatus(await poolGet(origin, '/status'));
   } catch {
     return null;
   }

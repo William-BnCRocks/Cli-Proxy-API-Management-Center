@@ -1,0 +1,11 @@
+/* xAI-only extras on the quota card (the account-pool proxy's own counters).
+ * The shared row/plan/bar styling comes from the QuotaBody module. */
+
+.rowDetail {
+  margin-top: 4px;
+  font-family: $font-mono;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}

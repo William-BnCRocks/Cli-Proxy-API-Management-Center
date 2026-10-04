@@ -1,14 +1,25 @@
 import { describe, expect, test } from 'bun:test';
 import { CODEX_CONFIG } from '@/features/quota/providers/codex/data';
 import { apiClient } from '@/services/api/client';
+import { commitPluginCards } from '@/features/quota/pluginSource';
+import { useQuotaStore } from '@/stores/useQuotaStore';
+import {
+  ACCOUNT_POOL_BASE,
+  LEGACY_CLAUDE_POOL_BASE,
+  currentPoolBase,
+  isLegacyPoolBase,
+  resetPoolBase,
+} from '@/features/quota/accountPool';
 import {
   fetchPluginCards,
+  refreshPluginCard,
   PLUGIN_QUOTA_CARDS_PATH,
   PLUGIN_QUOTA_REFRESH_PATH,
   claudeCardToData,
   codexCardToData,
   isPluginBackedType,
   parsePluginCards,
+  xaiCardToData,
 } from '@/features/quota/pluginCards';
 import {
   DEFAULT_DIRECT_INTERVAL_MS,
@@ -22,10 +33,10 @@ import {
 const T0 = 1_790_000_000;
 const DAY = 86400;
 
-// Shape of GET .../quota/cards (claude-pool), normalised block only, values rounded.
+// Shape of GET .../quota/cards (account-pool), normalised block only, values rounded.
 const response = {
   now: T0,
-  plugin: 'claude-pool',
+  plugin: 'account-pool',
   version: '0.3.0',
   force_gap_s: 60,
   cards: [
@@ -180,10 +191,10 @@ const response = {
   ],
 };
 
-describe('claude-pool quota cards', () => {
+describe('account-pool quota cards', () => {
   test('uses the v0 plugin routes', () => {
-    expect(PLUGIN_QUOTA_CARDS_PATH).toBe('/v0/management/plugins/claude-pool/quota/cards');
-    expect(PLUGIN_QUOTA_REFRESH_PATH).toBe('/v0/management/plugins/claude-pool/quota/refresh');
+    expect(PLUGIN_QUOTA_CARDS_PATH).toBe('/v0/management/plugins/account-pool/quota/cards');
+    expect(PLUGIN_QUOTA_REFRESH_PATH).toBe('/v0/management/plugins/account-pool/quota/refresh');
     expect(isPluginBackedType('claude') && isPluginBackedType('codex')).toBe(true);
     expect(isPluginBackedType('kimi')).toBe(false);
   });
@@ -331,10 +342,12 @@ describe('plugin probe', () => {
   const withGet = async (get: (url: string) => Promise<unknown>, run: () => Promise<void>) => {
     apiClient.setConfig({ apiBase: 'http://argus.test:8317', managementKey: 'test-key' });
     (apiClient as unknown as { get: typeof get }).get = get;
+    resetPoolBase();
     try {
       await run();
     } finally {
       (apiClient as unknown as { get: typeof original }).get = original;
+      resetPoolBase();
     }
   };
 
@@ -349,7 +362,7 @@ describe('plugin probe', () => {
         expect((await fetchPluginCards())?.cards).toHaveLength(3);
       }
     );
-    expect(seen).toBe('http://argus.test:8317/v0/management/plugins/claude-pool/quota/cards');
+    expect(seen).toBe('http://argus.test:8317/v0/management/plugins/account-pool/quota/cards');
   });
 
   test('a missing route, an error or another shape means "no plugin" (null, never a throw)', async () => {
@@ -363,5 +376,331 @@ describe('plugin probe', () => {
       async () => '<html>management</html>',
       async () => expect(await fetchPluginCards()).toBeNull()
     );
+  });
+});
+
+/* ------------------------------ xAI cards ------------------------------ */
+
+const XAI_WEEK_START = '2026-10-02T02:41:05.713506+00:00';
+const XAI_WEEK_END = '2026-10-09T02:41:05.713506+00:00';
+
+const xaiCardJson = (
+  overrides: Record<string, unknown> = {},
+  rawOverrides: Record<string, unknown> = {}
+) => ({
+  provider: 'xai',
+  name: 'xai-william@bnc.rocks.json',
+  display: 'william@bnc.rocks',
+  email: 'william@bnc.rocks',
+  disabled: false,
+  source: 'poll',
+  passive_at: null,
+  data_at: 1_791_086_000,
+  refresh_allowed_at: 1_791_085_940,
+  backoff_until: null,
+  last_error: null,
+  kind: 'ok',
+  normalized: {
+    plan: 'XPremiumPlus',
+    period: {
+      type: 'weekly',
+      start: 1_790_908_865,
+      resets_at: 1_791_513_665,
+      window_s: 604_800,
+    },
+    usage_percent: null,
+    remaining_percent: null,
+    measured: {
+      source: 'proxy',
+      since: 1_790_908_865,
+      requests: 12,
+      failed: 1,
+      rate_limited: 0,
+      input_tokens: 1200,
+      output_tokens: 300,
+      reasoning_tokens: 40,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      total_tokens: 1540,
+      last_request_at: 1_791_085_990,
+    },
+    rate_limit: {
+      limit_requests: 120,
+      remaining_requests: 119,
+      limit_tokens: 5_000_000,
+      remaining_tokens: 4_999_000,
+      at: 1_791_085_990,
+    },
+    on_demand: { cap_cents: 0, used_cents: 0 },
+    prepaid_balance_cents: 0,
+    monthly: { limit_cents: 0, used_cents: 0, start: 1_790_812_800, end: 1_793_491_200 },
+    ...((overrides.normalized as Record<string, unknown> | undefined) ?? {}),
+  },
+  raw: {
+    billing_weekly: {
+      currentPeriod: { type: 'USAGE_PERIOD_TYPE_WEEKLY', start: XAI_WEEK_START, end: XAI_WEEK_END },
+      onDemandCap: { val: 0 },
+      onDemandUsed: { val: 0 },
+      isUnifiedBillingUser: true,
+      prepaidBalance: { val: 0 },
+      billingPeriodStart: XAI_WEEK_START,
+      billingPeriodEnd: XAI_WEEK_END,
+    },
+    billing_monthly: {
+      monthlyLimit: { val: 0 },
+      used: { val: 0 },
+      onDemandCap: { val: 0 },
+      billingPeriodStart: '2026-10-01T00:00:00+00:00',
+      billingPeriodEnd: '2026-11-01T00:00:00+00:00',
+    },
+    user: { subscriptionTier: 'XPremiumPlus', hasGrokCodeAccess: true },
+    ...rawOverrides,
+  },
+  ...Object.fromEntries(Object.entries(overrides).filter(([key]) => key !== 'normalized')),
+});
+
+const xaiCard = (...args: Parameters<typeof xaiCardJson>) =>
+  parsePluginCards({ cards: [xaiCardJson(...args)] })!.cards[0];
+
+describe('xAI plugin cards', () => {
+  test('xai is plugin-backed and its cards parse after Claude and Codex', () => {
+    expect(isPluginBackedType('xai')).toBe(true);
+    const parsed = parsePluginCards({ cards: [...response.cards.slice(0, 1), xaiCardJson()] });
+    expect(parsed?.cards.map((card) => card.provider)).toEqual(['claude', 'xai']);
+    expect(parsed?.cards[1].raw.user).toEqual({
+      subscriptionTier: 'XPremiumPlus',
+      hasGrokCodeAccess: true,
+    });
+  });
+
+  test('maps billing through the shared builders, plan from the tier, and keeps measured and rate limit', () => {
+    const data = xaiCardToData(xaiCard())!;
+    expect(data.mode).toBe('billing');
+    expect(data.periodType).toBe('weekly');
+    expect(data.usagePercent).toBeNull();
+    expect(data.periodEnd).toBe(XAI_WEEK_END);
+    expect(data.resetAtMs).toBe(Date.parse(XAI_WEEK_END));
+    expect(data.onDemandCapCents).toBe(0);
+    expect(data.prepaidBalanceCents).toBe(0);
+    expect(data.billingPeriodEnd).toBe('2026-11-01T00:00:00+00:00');
+    expect(data.planLabel).toBe('X Premium+');
+    expect(data.planTier).toBe('premium');
+    expect(data.measured).toEqual({
+      sinceMs: 1_790_908_865_000,
+      requests: 12,
+      failed: 1,
+      rateLimited: 0,
+      inputTokens: 1200,
+      outputTokens: 300,
+      reasoningTokens: 40,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalTokens: 1540,
+      lastRequestAtMs: 1_791_085_990_000,
+    });
+    expect(data.rateLimit).toEqual({
+      limitRequests: 120,
+      remainingRequests: 119,
+      limitTokens: 5_000_000,
+      remainingTokens: 4_999_000,
+      atMs: 1_791_085_990_000,
+    });
+  });
+
+  test('carries xAI creditUsagePercent when the weekly payload has it', () => {
+    const weekly = (xaiCardJson().raw as { billing_weekly: Record<string, unknown> })
+      .billing_weekly;
+    const data = xaiCardToData(
+      xaiCard({}, { billing_weekly: { ...weekly, creditUsagePercent: 37 } })
+    )!;
+    expect(data.usagePercent).toBe(37);
+  });
+
+  test('measured and rate_limit may be null', () => {
+    const data = xaiCardToData(xaiCard({ normalized: { measured: null, rate_limit: null } }))!;
+    expect(data.measured).toBeNull();
+    expect(data.rateLimit).toBeNull();
+    expect(data.usagePercent).toBeNull();
+  });
+
+  test('an all-null rate_limit counts as none, and a measured block without counts as none', () => {
+    const data = xaiCardToData(
+      xaiCard({
+        normalized: {
+          measured: { source: 'proxy' },
+          rate_limit: { limit_requests: null, remaining_requests: null, at: 5 },
+        },
+      })
+    )!;
+    expect(data.measured).toBeNull();
+    expect(data.rateLimit).toBeNull();
+  });
+
+  test('takes the plan from raw.user when normalized.plan is absent, and a spaced name stays as sent', () => {
+    expect(xaiCardToData(xaiCard({ normalized: { plan: null } }))?.planLabel).toBe('X Premium+');
+    expect(xaiCardToData(xaiCard({ normalized: { plan: 'SuperGrok Heavy' } }))).toMatchObject({
+      planLabel: 'SuperGrok Heavy',
+      planTier: 'elite',
+    });
+    expect(
+      xaiCardToData(xaiCard({ normalized: { plan: null } }, { user: {} }))?.planLabel
+    ).toBeUndefined();
+  });
+
+  test('rebuilds the weekly period from normalized when the raw billing payloads are missing', () => {
+    const data = xaiCardToData(
+      xaiCard({}, { billing_weekly: undefined, billing_monthly: undefined })
+    )!;
+    expect(data.periodType).toBe('weekly');
+    expect(data.resetAtMs).toBe(1_791_513_665_000);
+    expect(data.measured?.requests).toBe(12);
+  });
+
+  test('a card with no billing period at all has nothing to show', () => {
+    expect(
+      xaiCardToData(
+        xaiCard(
+          { normalized: { period: null } },
+          { billing_weekly: undefined, billing_monthly: undefined }
+        )
+      )
+    ).toBeNull();
+  });
+});
+
+describe('account-pool -> claude-pool 404 fallback', () => {
+  const originalGet = apiClient.get.bind(apiClient);
+  const originalPost = apiClient.post.bind(apiClient);
+  const notFound = () => Object.assign(new Error('Not Found'), { status: 404 });
+  const base = 'http://argus.test:8317';
+
+  const withClient = async (
+    get: (url: string) => Promise<unknown>,
+    run: () => Promise<void>,
+    post: (url: string) => Promise<unknown> = async () => ({})
+  ) => {
+    apiClient.setConfig({ apiBase: base, managementKey: 'test-key' });
+    (apiClient as unknown as { get: typeof get }).get = get;
+    (apiClient as unknown as { post: typeof post }).post = post;
+    resetPoolBase();
+    try {
+      await run();
+    } finally {
+      (apiClient as unknown as { get: typeof originalGet }).get = originalGet;
+      (apiClient as unknown as { post: typeof originalPost }).post = originalPost;
+      resetPoolBase();
+    }
+  };
+
+  test('account-pool answering is used and the legacy path is never asked', async () => {
+    const seen: string[] = [];
+    await withClient(
+      async (url) => {
+        seen.push(url);
+        return response;
+      },
+      async () => {
+        expect(await fetchPluginCards()).not.toBeNull();
+        expect(await fetchPluginCards()).not.toBeNull();
+        expect(currentPoolBase()).toBe(ACCOUNT_POOL_BASE);
+        expect(isLegacyPoolBase()).toBe(false);
+        expect(isPluginBackedType('xai')).toBe(true);
+      }
+    );
+    expect(seen).toEqual([
+      `${base}${ACCOUNT_POOL_BASE}/quota/cards`,
+      `${base}${ACCOUNT_POOL_BASE}/quota/cards`,
+    ]);
+  });
+
+  test('a 404 on account-pool retries the legacy path once and sticks to what answered', async () => {
+    const seen: string[] = [];
+    const posted: string[] = [];
+    await withClient(
+      async (url) => {
+        seen.push(url);
+        if (url.includes('/account-pool/')) throw notFound();
+        return response;
+      },
+      async () => {
+        expect((await fetchPluginCards())?.cards).toHaveLength(3);
+        expect(isLegacyPoolBase()).toBe(true);
+        expect(currentPoolBase()).toBe(LEGACY_CLAUDE_POOL_BASE);
+        // The legacy plugin serves no xAI cards, so xAI stays on the direct path.
+        expect(isPluginBackedType('xai')).toBe(false);
+        expect(isPluginBackedType('claude') && isPluginBackedType('codex')).toBe(true);
+        expect((await fetchPluginCards())?.cards).toHaveLength(3);
+        expect(await refreshPluginCard('claude-a.json')).toEqual({ ok: true });
+      },
+      async (url) => {
+        posted.push(url);
+        return {};
+      }
+    );
+    expect(seen).toEqual([
+      `${base}${ACCOUNT_POOL_BASE}/quota/cards`,
+      `${base}${LEGACY_CLAUDE_POOL_BASE}/quota/cards`,
+      `${base}${LEGACY_CLAUDE_POOL_BASE}/quota/cards`,
+    ]);
+    expect(posted).toEqual([`${base}${LEGACY_CLAUDE_POOL_BASE}/quota/refresh?name=claude-a.json`]);
+  });
+
+  test('404 on both is "no plugin", and a non-404 failure never tries the legacy path', async () => {
+    const seen: string[] = [];
+    await withClient(
+      async (url) => {
+        seen.push(url);
+        throw notFound();
+      },
+      async () => expect(await fetchPluginCards()).toBeNull()
+    );
+    expect(seen).toHaveLength(2);
+
+    const serverError: string[] = [];
+    await withClient(
+      async (url) => {
+        serverError.push(url);
+        throw Object.assign(new Error('boom'), { status: 500 });
+      },
+      async () => expect(await fetchPluginCards()).toBeNull()
+    );
+    expect(serverError).toEqual([`${base}${ACCOUNT_POOL_BASE}/quota/cards`]);
+  });
+
+  test('a resolved base that starts answering 404 is probed again', async () => {
+    let upgraded = false;
+    await withClient(
+      async (url) => {
+        if (url.includes('/account-pool/') && !upgraded) throw notFound();
+        if (url.includes('/claude-pool/') && upgraded) throw notFound();
+        return response;
+      },
+      async () => {
+        await fetchPluginCards();
+        expect(isLegacyPoolBase()).toBe(true);
+        upgraded = true;
+        expect(await fetchPluginCards()).toBeNull();
+        expect(await fetchPluginCards()).not.toBeNull();
+        expect(currentPoolBase()).toBe(ACCOUNT_POOL_BASE);
+      }
+    );
+  });
+});
+
+describe('committing xAI cards into the quota store', () => {
+  test('a ready card becomes a success state, an unread one an error state, others are untouched', () => {
+    useQuotaStore.getState().clearQuotaCache();
+    const parsed = parsePluginCards({
+      cards: [
+        xaiCardJson(),
+        xaiCardJson({ name: 'xai-new.json', data_at: null, last_error: { msg: 'HTTP 502' } }),
+      ],
+    })!;
+    commitPluginCards(parsed, 1_791_086_100_000);
+    const { xaiQuota } = useQuotaStore.getState();
+    expect(xaiQuota['xai-william@bnc.rocks.json']).toMatchObject({ status: 'success' });
+    expect(xaiQuota['xai-william@bnc.rocks.json'].billing?.measured?.requests).toBe(12);
+    expect(xaiQuota['xai-new.json']).toMatchObject({ status: 'error', error: 'HTTP 502' });
+    useQuotaStore.getState().clearQuotaCache();
   });
 });

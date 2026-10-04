@@ -1,5 +1,5 @@
 /**
- * Decides where Claude/Codex numbers come from and, when the claude-pool plugin
+ * Decides where Claude/Codex/xAI numbers come from and, when the account-pool plugin
  * is there, keeps them fresh from its in-memory cache.
  *
  * - First call on page open is the probe: GET .../quota/cards. 200 with the

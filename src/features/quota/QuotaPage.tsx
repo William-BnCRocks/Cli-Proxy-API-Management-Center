@@ -51,9 +51,9 @@ import { useDevinQuotaAutoLoad } from './providers/devin/useDevinQuotaAutoLoad';
 import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
 import { useQuotaLiveRefresh } from './hooks/useQuotaLiveRefresh';
-import { useClaudePoolStatus } from './hooks/useClaudePoolStatus';
+import { useAccountPoolStatus } from './hooks/useAccountPoolStatus';
 import { usePluginQuotaSource } from './hooks/usePluginQuotaSource';
-import { resolveClaudePoolInfo } from './claudePool';
+import { resolveAccountPoolInfo } from './accountPool';
 import { intervalsFor } from './liveRefresh';
 import { useQuotaLiveStore } from './liveStore';
 import { readQuotaUiState, writeQuotaUiState } from './uiState';
@@ -311,7 +311,7 @@ export function QuotaPage() {
   // Load every credential on the page without a click, then keep them fresh.
   usePluginQuotaSource(canUseActions && !error);
   useQuotaLiveRefresh(pageItems, canUseActions && !error);
-  const claudePoolStatus = useClaudePoolStatus(
+  const accountPoolStatus = useAccountPoolStatus(
     canUseActions && pageItems.some((entry) => entry.type === 'claude'),
     liveIntervalMs
   );
@@ -461,9 +461,9 @@ export function QuotaPage() {
                 canRefresh={canUseActions && !entry.file.disabled}
                 resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
                 entranceDelayMs={cardEntranceDelay(index)}
-                claudePool={
+                accountPool={
                   entry.type === 'claude'
-                    ? resolveClaudePoolInfo(claudePoolStatus, entry.file)
+                    ? resolveAccountPoolInfo(accountPoolStatus, entry.file)
                     : null
                 }
                 onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}

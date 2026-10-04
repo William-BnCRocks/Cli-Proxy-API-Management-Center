@@ -7,7 +7,7 @@
  * 初始化时抛错并列出缺失清单，替代旧字符串 styleMap 的静默 class="undefined"。
  */
 
-import type { ClaudePoolInfo } from './claudePool';
+import type { AccountPoolInfo } from './accountPool';
 
 export interface QuotaClassMap {
   // 额度行（五个提供商共用）
@@ -101,6 +101,6 @@ export function bindQuotaClasses(module: Record<string, string>, source: string)
 export interface QuotaBodyProps<TState> {
   quota: TState;
   classes: QuotaClassMap;
-  /** Claude only, and only when the optional claude-pool plugin answered. */
-  claudePool?: ClaudePoolInfo | null;
+  /** Claude only, and only when the optional account-pool plugin answered. */
+  accountPool?: AccountPoolInfo | null;
 }

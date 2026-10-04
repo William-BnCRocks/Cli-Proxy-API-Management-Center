@@ -18,7 +18,7 @@ export interface QuotaMeterProps {
   classes: QuotaClassMap;
   index?: number;
   /**
-   * Optional pace tick on the same remaining-% scale (the claude-pool plan: where the
+   * Optional pace tick on the same remaining-% scale (the account-pool plan: where the
    * fill should be if usage were on plan). Fill right of it = ahead, left of it = behind.
    */
   marker?: number | null;
