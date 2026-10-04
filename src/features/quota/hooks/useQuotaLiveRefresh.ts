@@ -84,7 +84,7 @@ export function useQuotaLiveRefresh(entries: QuotaFileEntry[], enabled: boolean)
       const now = Date.now();
       const byKey = new Map<string, QuotaFileEntry>();
       const candidates = entries
-        // Claude/Codex numbers come from the account-pool cache when it exists, and are not
+        // Claude/Codex/xAI numbers come from the account-pool cache when it exists, and are not
         // fetched directly until the probe has said which source applies.
         .filter((entry) => !entry.file.disabled)
         .filter((entry) => source === 'direct' || !isPluginBackedType(entry.type))

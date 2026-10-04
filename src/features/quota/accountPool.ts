@@ -12,8 +12,59 @@
 
 import { apiClient } from '@/services/api/client';
 import type { AuthFileItem } from '@/types';
+import { getStatusFromError } from '@/utils/quota';
 
-export const ACCOUNT_POOL_STATUS_PATH = '/v0/management/plugins/account-pool/status';
+export const ACCOUNT_POOL_BASE = '/v0/management/plugins/account-pool';
+export const ACCOUNT_POOL_STATUS_PATH = `${ACCOUNT_POOL_BASE}/status`;
+
+/**
+ * TEMPORARY (one release): the plugin used to be called `claude-pool`. A panel
+ * that is upgraded before the plugin finds the old routes only there, so a 404
+ * from the account-pool route is retried once on the legacy base and the base
+ * that answered is used from then on. Delete this block, `poolGet`,
+ * `currentPoolBase` and `isLegacyPoolBase` once every plugin runs as `account-pool`.
+ */
+export const LEGACY_CLAUDE_POOL_BASE = '/v0/management/plugins/claude-pool';
+
+let resolvedBase: string | null = null;
+
+/** Base the plugin answered on; account-pool until a probe has said otherwise. */
+export const currentPoolBase = (): string => resolvedBase ?? ACCOUNT_POOL_BASE;
+
+/** True while only the legacy claude-pool routes answer (that plugin serves no xAI cards). */
+export const isLegacyPoolBase = (): boolean => resolvedBase === LEGACY_CLAUDE_POOL_BASE;
+
+/** Forget the resolved base (tests; the next call probes again). */
+export const resetPoolBase = (): void => {
+  resolvedBase = null;
+};
+
+/**
+ * GET a plugin route (`suffix` starts with `/`). Uses the resolved base; with none
+ * resolved yet it tries account-pool and, on a 404 only, the legacy base once. A 404
+ * on a resolved base clears it, so a plugin upgraded mid-visit is found again.
+ */
+export async function poolGet(origin: string, suffix: string): Promise<unknown> {
+  const read = (base: string) => apiClient.get(`${origin}${base}${suffix}`);
+  if (resolvedBase) {
+    try {
+      return await read(resolvedBase);
+    } catch (err) {
+      if (getStatusFromError(err) === 404) resolvedBase = null;
+      throw err;
+    }
+  }
+  try {
+    const answer = await read(ACCOUNT_POOL_BASE);
+    resolvedBase = ACCOUNT_POOL_BASE;
+    return answer;
+  } catch (err) {
+    if (getStatusFromError(err) !== 404) throw err;
+  }
+  const answer = await read(LEGACY_CLAUDE_POOL_BASE);
+  resolvedBase = LEGACY_CLAUDE_POOL_BASE;
+  return answer;
+}
 
 export interface AccountPoolAccount {
   name: string;
@@ -114,7 +165,7 @@ export async function fetchAccountPoolStatus(): Promise<AccountPoolStatus | null
   const origin = apiClient.getServerOrigin();
   if (!origin) return null;
   try {
-    return parseAccountPoolStatus(await apiClient.get(`${origin}${ACCOUNT_POOL_STATUS_PATH}`));
+    return parseAccountPoolStatus(await poolGet(origin, '/status'));
   } catch {
     return null;
   }

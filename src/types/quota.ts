@@ -500,6 +500,34 @@ export interface XaiProductUsageSummary {
   usagePercent: number | null;
 }
 
+/**
+ * Usage measured by the account-pool proxy for the current xAI period (the
+ * proxy's own counters, not an xAI figure). Never a percentage of an allowance.
+ */
+export interface XaiMeasuredUsage {
+  /** Start of the measured period, epoch ms. */
+  sinceMs: number | null;
+  requests: number;
+  failed: number;
+  rateLimited: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  totalTokens: number;
+  lastRequestAtMs: number | null;
+}
+
+/** Latest rate-limit headroom the proxy saw in xAI response headers. */
+export interface XaiRateLimitHeadroom {
+  limitRequests: number | null;
+  remainingRequests: number | null;
+  limitTokens: number | null;
+  remainingTokens: number | null;
+  atMs: number | null;
+}
+
 export interface XaiBillingSummary {
   mode: 'billing' | 'paid-health';
   source?: 'cli-chat-proxy' | 'api.x.ai-fallback';
@@ -535,6 +563,10 @@ export interface XaiBillingSummary {
   resetAtMs?: number | null;
   /** Active period length in hours, derived from `periodStart` → `periodEnd`. */
   periodHours?: number | null;
+  /** account-pool plugin only: what the proxy itself measured for this period. */
+  measured?: XaiMeasuredUsage | null;
+  /** account-pool plugin only: newest rate-limit headroom seen in xAI headers. */
+  rateLimit?: XaiRateLimitHeadroom | null;
 }
 
 export interface XaiQuotaState {

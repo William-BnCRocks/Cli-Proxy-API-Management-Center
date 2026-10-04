@@ -6,12 +6,19 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { XaiBillingSummary, XaiQuotaState } from '@/types';
-import { buildResetDisplay, formatQuotaResetTime, parseIsoToMs } from '@/utils/quota';
+import { formatCompactNumber } from '@/utils/format';
+import {
+  buildResetDisplay,
+  formatInstantShort,
+  formatQuotaResetTime,
+  parseIsoToMs,
+} from '@/utils/quota';
 import { useNow } from '@/hooks/useNow';
 import { QuotaMeter } from '../../components/QuotaMeter';
 import { QuotaResetLabel } from '../../components/QuotaResetLabel';
 import { XAI_WEEKLY_ROW_ID, collectQuotaRowInstants, pickUrgentRowId } from '../../resetSchedule';
 import type { QuotaBodyProps } from '../../types';
+import styles from './XaiQuotaBody.module.scss';
 
 const formatUsdFromCents = (cents: number | null): string => {
   if (cents === null) return '--';
@@ -46,6 +53,13 @@ const formatXaiOnDemandAmount = (billing: XaiBillingSummary): string => {
 const formatXaiPercent = (value: number | null): string => {
   if (value === null) return '--';
   return `${Math.round(value)}%`;
+};
+
+/** `remaining/limit`; an unknown half renders as a dash. Null when neither is known. */
+const formatHeadroom = (remaining: number | null, limit: number | null): string | null => {
+  if (remaining === null && limit === null) return null;
+  const part = (value: number | null) => (value === null ? '--' : formatCompactNumber(value));
+  return `${part(remaining)}/${part(limit)}`;
 };
 
 const XAI_SUPERGROK_LIMIT_CENTS = 15_000;
@@ -149,6 +163,61 @@ export function XaiQuotaBody({ quota, classes }: QuotaBodyProps<XaiQuotaState>) 
   const hasWeeklyData =
     billing.periodType === 'weekly' &&
     (weeklyUsed !== null || Boolean(billing.periodEnd) || billing.productUsage.length > 0);
+  // The proxy's own counters (account-pool): shown as counts, never as a share of an xAI allowance.
+  const measured = billing.measured ?? null;
+  const measuredParts: string[] = [];
+  if (measured) {
+    measuredParts.push(
+      t('xai_quota.measured_input', { value: formatCompactNumber(measured.inputTokens) }),
+      t('xai_quota.measured_output', { value: formatCompactNumber(measured.outputTokens) })
+    );
+    if (measured.reasoningTokens > 0) {
+      measuredParts.push(
+        t('xai_quota.measured_reasoning', { value: formatCompactNumber(measured.reasoningTokens) })
+      );
+    }
+    if (measured.cacheReadTokens > 0 || measured.cacheWriteTokens > 0) {
+      measuredParts.push(
+        t('xai_quota.measured_cache', {
+          read: formatCompactNumber(measured.cacheReadTokens),
+          write: formatCompactNumber(measured.cacheWriteTokens),
+        })
+      );
+    }
+    measuredParts.push(
+      t('xai_quota.measured_failed', { n: measured.failed }),
+      t('xai_quota.measured_rate_limited', { n: measured.rateLimited })
+    );
+    if (measured.sinceMs !== null) {
+      measuredParts.push(
+        t('xai_quota.measured_since', { time: formatInstantShort(measured.sinceMs) })
+      );
+    }
+  }
+  const measuredDetail = measuredParts.join(' · ');
+  const measuredTitle = measured ? `${measuredDetail}\n${t('xai_quota.measured_hint')}` : undefined;
+  const rateLimit = billing.rateLimit ?? null;
+  const headroomRequests = rateLimit
+    ? formatHeadroom(rateLimit.remainingRequests, rateLimit.limitRequests)
+    : null;
+  const headroomTokens = rateLimit
+    ? formatHeadroom(rateLimit.remainingTokens, rateLimit.limitTokens)
+    : null;
+  const rateLimitLine =
+    headroomRequests === null && headroomTokens === null
+      ? null
+      : t('xai_quota.rate_limit_line', {
+          value: [
+            headroomRequests === null
+              ? null
+              : t('xai_quota.rate_limit_requests', { value: headroomRequests }),
+            headroomTokens === null
+              ? null
+              : t('xai_quota.rate_limit_tokens', { value: headroomTokens }),
+          ]
+            .filter((part) => part !== null)
+            .join(' · '),
+        });
   const hasMonthlyData =
     (billing.monthlyLimitCents !== null ||
       billing.usedCents !== null ||
@@ -207,7 +276,7 @@ export function XaiQuotaBody({ quota, classes }: QuotaBodyProps<XaiQuotaState>) 
             <div className={classes.quotaMeta}>
               <span className={classes.quotaPercent}>
                 {weeklyUsed === null
-                  ? t('xai_quota.usage_unavailable')
+                  ? t(measured ? 'xai_quota.usage_not_reported' : 'xai_quota.usage_unavailable')
                   : t('xai_quota.used_percent', { percent: formatXaiPercent(weeklyUsed) })}
               </span>
               {weeklyResetDisplay && (
@@ -218,6 +287,34 @@ export function XaiQuotaBody({ quota, classes }: QuotaBodyProps<XaiQuotaState>) 
           {weeklyRemaining !== null && (
             <QuotaMeter percent={weeklyRemaining} classes={classes} index={0} />
           )}
+        </div>
+      )}
+      {(measured || rateLimitLine) && (
+        <div className={classes.quotaRow} title={measuredTitle}>
+          {measured && (
+            <>
+              <div className={classes.quotaRowHeader}>
+                <span className={classes.quotaModel}>
+                  {t(
+                    billing.periodType === 'weekly'
+                      ? 'xai_quota.measured_label_week'
+                      : 'xai_quota.measured_label_period'
+                  )}
+                </span>
+                <div className={classes.quotaMeta}>
+                  <span className={classes.quotaAmount}>
+                    {t('xai_quota.measured_summary', {
+                      count: measured.requests,
+                      requests: formatCompactNumber(measured.requests),
+                      tokens: formatCompactNumber(measured.totalTokens),
+                    })}
+                  </span>
+                </div>
+              </div>
+              <div className={styles.rowDetail}>{measuredDetail}</div>
+            </>
+          )}
+          {rateLimitLine && <div className={styles.rowDetail}>{rateLimitLine}</div>}
         </div>
       )}
       {billing.productUsage.map((item, index) => {

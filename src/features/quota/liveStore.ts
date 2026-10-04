@@ -66,8 +66,8 @@ const rescheduled = (schedules: Record<string, LiveSchedule>, intervalMs: number
 
 interface QuotaLiveState {
   /**
-   * `unknown` until the account-pool probe answers; Claude and Codex are not
-   * fetched before that, so a page open never touches Anthropic/ChatGPT by accident.
+   * `unknown` until the account-pool probe answers; Claude, Codex and xAI are not
+   * fetched before that, so a page open never touches Anthropic/ChatGPT/xAI by accident.
    */
   source: QuotaSourceMode | 'unknown';
   /** Effective interval for the current source. */
